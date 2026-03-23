@@ -1,8 +1,7 @@
 import { Connection, PublicKey } from "@solana/web3.js";
 import { Program, AnchorProvider } from "@coral-xyz/anchor";
-import { PROGRAM_ID } from "./constants";
 import { ReputationAccount, SettlementRecord } from "./types";
-import { deriveReputationPda, deriveVaultPda } from "./utils";
+import { deriveReputationPda } from "./utils";
 
 function getProgram(connection: Connection): Program {
   const idl = require("../idl/seeker_iou.json");
@@ -11,7 +10,7 @@ function getProgram(connection: Connection): Program {
     {} as any,
     AnchorProvider.defaultOptions()
   );
-  return new Program(idl, PROGRAM_ID, provider);
+  return new Program(idl, provider);
 }
 
 /**

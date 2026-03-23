@@ -145,13 +145,4 @@ export function parseIOUMessage(data: Uint8Array): IOUParams {
 /**
  * Verify an IOU signature client-side using tweetnacl.
  */
-export function verifyIOUSignature(
-  message: Uint8Array,
-  signature: Uint8Array,
-  senderPublicKey: PublicKey
-): boolean {
-  // Delegate to verification module to avoid circular deps
-  // This is re-exported for convenience
-  const { verifySignature } = require("./verification");
-  return verifySignature(message, signature, senderPublicKey);
-}
+export { verifySignature as verifyIOUSignature } from "./verification";

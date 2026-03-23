@@ -9,21 +9,20 @@ import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import { Program } from "@coral-xyz/anchor";
-import { PROGRAM_ID } from "./constants";
 import { deriveVaultPda, deriveReputationPda } from "./utils";
 
 function getProgram(): Program {
-  // Lazy-load IDL to avoid circular deps
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const idl = require("../idl/seeker_iou.json");
-  return new Program(idl, PROGRAM_ID);
+  return new Program(idl);
 }
 
-export function createVaultInstruction(params: {
+export async function createVaultInstruction(params: {
   owner: PublicKey;
   tokenMint: PublicKey;
   sgtMint: PublicKey;
   sgtTokenAccount: PublicKey;
-}): TransactionInstruction {
+}): Promise<TransactionInstruction> {
   const [vaultPda] = deriveVaultPda(params.owner, params.tokenMint);
   const [reputationPda] = deriveReputationPda(params.sgtMint);
   const vaultTokenAccount = getAssociatedTokenAddressSync(
@@ -50,12 +49,12 @@ export function createVaultInstruction(params: {
     .instruction();
 }
 
-export function createDepositInstruction(params: {
+export async function createDepositInstruction(params: {
   owner: PublicKey;
   vault: PublicKey;
   tokenMint: PublicKey;
   amount: bigint;
-}): TransactionInstruction {
+}): Promise<TransactionInstruction> {
   const ownerTokenAccount = getAssociatedTokenAddressSync(
     params.tokenMint,
     params.owner
@@ -80,10 +79,10 @@ export function createDepositInstruction(params: {
     .instruction();
 }
 
-export function createDeactivateVaultInstruction(params: {
+export async function createDeactivateVaultInstruction(params: {
   owner: PublicKey;
   vault: PublicKey;
-}): TransactionInstruction {
+}): Promise<TransactionInstruction> {
   const program = getProgram();
   return program.methods
     .deactivateVault()
@@ -94,10 +93,10 @@ export function createDeactivateVaultInstruction(params: {
     .instruction();
 }
 
-export function createReactivateVaultInstruction(params: {
+export async function createReactivateVaultInstruction(params: {
   owner: PublicKey;
   vault: PublicKey;
-}): TransactionInstruction {
+}): Promise<TransactionInstruction> {
   const program = getProgram();
   return program.methods
     .reactivateVault()
@@ -108,11 +107,11 @@ export function createReactivateVaultInstruction(params: {
     .instruction();
 }
 
-export function createWithdrawInstruction(params: {
+export async function createWithdrawInstruction(params: {
   owner: PublicKey;
   vault: PublicKey;
   tokenMint: PublicKey;
-}): TransactionInstruction {
+}): Promise<TransactionInstruction> {
   const ownerTokenAccount = getAssociatedTokenAddressSync(
     params.tokenMint,
     params.owner

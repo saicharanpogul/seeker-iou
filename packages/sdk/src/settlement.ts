@@ -12,12 +12,12 @@ import {
   ASSOCIATED_TOKEN_PROGRAM_ID,
 } from "@solana/spl-token";
 import { Program } from "@coral-xyz/anchor";
-import { PROGRAM_ID } from "./constants";
 import { deriveSettlementRecordPda, deriveReputationPda } from "./utils";
 
 function getProgram(): Program {
+  // eslint-disable-next-line @typescript-eslint/no-var-requires
   const idl = require("../idl/seeker_iou.json");
-  return new Program(idl, PROGRAM_ID);
+  return new Program(idl);
 }
 
 /**
@@ -25,7 +25,7 @@ function getProgram(): Program {
  * Returns TWO instructions: Ed25519 verify + settle_iou.
  * Both must be included in the same transaction, Ed25519 first.
  */
-export function createSettleIOUInstruction(params: {
+export async function createSettleIOUInstruction(params: {
   settler: PublicKey;
   vault: PublicKey;
   recipient: PublicKey;
@@ -35,7 +35,7 @@ export function createSettleIOUInstruction(params: {
   nonce: number;
   sgtMint: PublicKey;
   senderPublicKey: PublicKey;
-}): TransactionInstruction[] {
+}): Promise<TransactionInstruction[]> {
   // Ed25519 verify instruction
   const ed25519Ix = Ed25519Program.createInstructionWithPublicKey({
     publicKey: params.senderPublicKey.toBytes(),
@@ -60,7 +60,7 @@ export function createSettleIOUInstruction(params: {
   const [reputationPda] = deriveReputationPda(params.sgtMint);
 
   const program = getProgram();
-  const settleIx = program.methods
+  const settleIx = await program.methods
     .settleIou(
       Buffer.from(params.iouMessage),
       Array.from(params.signature),
@@ -89,7 +89,7 @@ export function createSettleIOUInstruction(params: {
  * Create batch settlement instructions for multiple IOUs.
  * Returns pairs of [Ed25519 verify, settle_iou] for each IOU.
  */
-export function createBatchSettleInstructions(params: {
+export async function createBatchSettleInstructions(params: {
   settler: PublicKey;
   ious: Array<{
     vault: PublicKey;
@@ -101,11 +101,11 @@ export function createBatchSettleInstructions(params: {
     sgtMint: PublicKey;
     senderPublicKey: PublicKey;
   }>;
-}): TransactionInstruction[] {
+}): Promise<TransactionInstruction[]> {
   const instructions: TransactionInstruction[] = [];
 
   for (const iou of params.ious) {
-    const pair = createSettleIOUInstruction({
+    const pair = await createSettleIOUInstruction({
       settler: params.settler,
       ...iou,
     });
@@ -127,7 +127,6 @@ export function chunkSettlementTransactions(
   const transactions: Transaction[] = [];
 
   // Instructions come in pairs: [ed25519, settle, ed25519, settle, ...]
-  // Process 2 pairs (4 instructions) per transaction max
   const PAIRS_PER_TX = 2;
   const INSTRUCTIONS_PER_PAIR = 2;
 
