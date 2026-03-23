@@ -8,7 +8,7 @@ pub mod state;
 
 use instructions::*;
 
-declare_id!("6wz3cfQKtxWS4KLztGyD4BCM8RUrfXiNyxWgYi25p5Eo");
+declare_id!("Appq4U1rTS4tCo4E84qhQs777z3awXf6K55amgnZ5srC");
 
 #[program]
 pub mod seeker_iou {
@@ -29,5 +29,17 @@ pub mod seeker_iou {
         nonce: u64,
     ) -> Result<()> {
         instructions::settle_iou::handler(ctx, iou_message, signature, nonce)
+    }
+
+    pub fn deactivate_vault(ctx: Context<DeactivateVault>) -> Result<()> {
+        instructions::deactivate_vault::handler(ctx)
+    }
+
+    pub fn reactivate_vault(ctx: Context<ReactivateVault>) -> Result<()> {
+        instructions::reactivate_vault::handler(ctx)
+    }
+
+    pub fn withdraw(ctx: Context<Withdraw>) -> Result<()> {
+        instructions::withdraw::handler(ctx)
     }
 }

@@ -6,7 +6,7 @@ resolution = true
 skip-lint = false
 
 [programs.localnet]
-seeker_iou = "6wz3cfQKtxWS4KLztGyD4BCM8RUrfXiNyxWgYi25p5Eo"
+seeker_iou = "Appq4U1rTS4tCo4E84qhQs777z3awXf6K55amgnZ5srC"
 
 [registry]
 url = "https://api.apr.dev"
