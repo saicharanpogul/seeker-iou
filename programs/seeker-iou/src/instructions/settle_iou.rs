@@ -330,9 +330,26 @@ fn verify_ed25519_signature(
     );
 
     let signature_offset = u16::from_le_bytes([ix_data[2], ix_data[3]]) as usize;
+    let signature_instruction_index = u16::from_le_bytes([ix_data[4], ix_data[5]]);
     let public_key_offset = u16::from_le_bytes([ix_data[6], ix_data[7]]) as usize;
+    let public_key_instruction_index = u16::from_le_bytes([ix_data[8], ix_data[9]]);
     let message_data_offset = u16::from_le_bytes([ix_data[10], ix_data[11]]) as usize;
     let message_data_size = u16::from_le_bytes([ix_data[12], ix_data[13]]) as usize;
+    let message_instruction_index = u16::from_le_bytes([ix_data[14], ix_data[15]]);
+
+    // Validate that all instruction indices are 0xFFFF (data is inline, not from another instruction)
+    require!(
+        signature_instruction_index == u16::MAX,
+        SeekerIOUError::InvalidEd25519InstructionData
+    );
+    require!(
+        public_key_instruction_index == u16::MAX,
+        SeekerIOUError::InvalidEd25519InstructionData
+    );
+    require!(
+        message_instruction_index == u16::MAX,
+        SeekerIOUError::InvalidEd25519InstructionData
+    );
 
     // Verify the public key matches
     require!(

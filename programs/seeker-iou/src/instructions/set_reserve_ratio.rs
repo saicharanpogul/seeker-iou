@@ -14,6 +14,7 @@ pub struct SetReserveRatio<'info> {
         seeds = [b"vault", owner.key().as_ref(), vault.token_mint.as_ref()],
         bump = vault.bump,
         has_one = owner,
+        constraint = vault.is_active @ SeekerIOUError::VaultNotActive,
     )]
     pub vault: Account<'info, Vault>,
 }

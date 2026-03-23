@@ -52,11 +52,14 @@ pub fn handler(ctx: Context<Withdraw>) -> Result<()> {
         SeekerIOUError::CooldownNotElapsed
     );
 
-    // Calculate remaining balance
-    let remaining = vault
+    // Calculate remaining balance, using the actual token account balance
+    // as a safety bound in case of edge cases (e.g. rounding, external transfers)
+    let book_remaining = vault
         .deposited_amount
         .checked_sub(vault.spent_amount)
         .ok_or(SeekerIOUError::ArithmeticOverflow)?;
+    let actual_balance = ctx.accounts.vault_token_account.amount;
+    let remaining = book_remaining.min(actual_balance);
     require!(remaining > 0, SeekerIOUError::NoBalanceToWithdraw);
 
     // Transfer remaining tokens back to owner
