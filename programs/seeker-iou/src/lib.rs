@@ -6,17 +6,15 @@ pub mod instructions;
 pub mod iou;
 pub mod state;
 
+use instructions::*;
+
 declare_id!("6wz3cfQKtxWS4KLztGyD4BCM8RUrfXiNyxWgYi25p5Eo");
 
 #[program]
 pub mod seeker_iou {
     use super::*;
 
-    pub fn initialize(ctx: Context<Initialize>) -> Result<()> {
-        msg!("Greetings from: {:?}", ctx.program_id);
-        Ok(())
+    pub fn create_vault(ctx: Context<CreateVault>) -> Result<()> {
+        instructions::create_vault::handler(ctx)
     }
 }
-
-#[derive(Accounts)]
-pub struct Initialize {}
