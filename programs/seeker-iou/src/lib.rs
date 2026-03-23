@@ -21,4 +21,13 @@ pub mod seeker_iou {
     pub fn deposit(ctx: Context<Deposit>, amount: u64) -> Result<()> {
         instructions::deposit::handler(ctx, amount)
     }
+
+    pub fn settle_iou(
+        ctx: Context<SettleIOU>,
+        iou_message: Vec<u8>,
+        signature: [u8; 64],
+        nonce: u64,
+    ) -> Result<()> {
+        instructions::settle_iou::handler(ctx, iou_message, signature, nonce)
+    }
 }
