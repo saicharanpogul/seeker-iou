@@ -180,7 +180,7 @@ describe("seeker-iou", () => {
       );
 
       await program.methods
-        .createVault()
+        .createVault(3000, 0) // 30% reserve ratio, default cooldown
         .accountsStrict({
           owner: owner.publicKey,
           vault: vaultPda,
@@ -204,6 +204,8 @@ describe("seeker-iou", () => {
       expect(vault.currentNonce.toNumber()).to.equal(0);
       expect(vault.isActive).to.be.true;
       expect(vault.cooldownSeconds).to.equal(3600);
+      expect(vault.reserveRatioBps).to.equal(3000);
+      expect(vault.totalSlashed.toNumber()).to.equal(0);
 
       const reputation = await program.account.reputationAccount.fetch(
         reputationPda
@@ -630,6 +632,8 @@ describe("seeker-iou", () => {
         settlementRecordPda
       );
       expect(record.success).to.be.false;
+      // With 30% reserve, some bond should have been slashed
+      expect(record.slashAmount.toNumber()).to.be.greaterThanOrEqual(0);
 
       const reputation = await program.account.reputationAccount.fetch(
         reputationPda
@@ -997,6 +1001,223 @@ describe("seeker-iou", () => {
       const vault = await program.account.vault.fetch(vaultPda);
       expect(vault.isActive).to.be.true;
       expect(vault.deactivatedAt.toNumber()).to.equal(0);
+    });
+  });
+
+  describe("set_reserve_ratio", () => {
+    it("updates reserve ratio", async () => {
+      await program.methods
+        .setReserveRatio(5000) // 50%
+        .accountsStrict({
+          owner: owner.publicKey,
+          vault: vaultPda,
+        })
+        .signers([owner])
+        .rpc();
+
+      const vault = await program.account.vault.fetch(vaultPda);
+      expect(vault.reserveRatioBps).to.equal(5000);
+    });
+
+    it("rejects ratio above 10000", async () => {
+      try {
+        await program.methods
+          .setReserveRatio(10001)
+          .accountsStrict({
+            owner: owner.publicKey,
+            vault: vaultPda,
+          })
+          .signers([owner])
+          .rpc();
+        expect.fail("Should have thrown");
+      } catch (err: any) {
+        expect(err.error.errorCode.code).to.equal("InvalidReserveRatio");
+      }
+    });
+
+    it("allows zero ratio (no reserve)", async () => {
+      await program.methods
+        .setReserveRatio(0)
+        .accountsStrict({
+          owner: owner.publicKey,
+          vault: vaultPda,
+        })
+        .signers([owner])
+        .rpc();
+
+      const vault = await program.account.vault.fetch(vaultPda);
+      expect(vault.reserveRatioBps).to.equal(0);
+
+      // Reset to 30% for remaining tests
+      await program.methods
+        .setReserveRatio(3000)
+        .accountsStrict({
+          owner: owner.publicKey,
+          vault: vaultPda,
+        })
+        .signers([owner])
+        .rpc();
+    });
+  });
+
+  describe("set_cooldown", () => {
+    it("updates cooldown period", async () => {
+      await program.methods
+        .setCooldown(7200) // 2 hours
+        .accountsStrict({
+          owner: owner.publicKey,
+          vault: vaultPda,
+        })
+        .signers([owner])
+        .rpc();
+
+      const vault = await program.account.vault.fetch(vaultPda);
+      expect(vault.cooldownSeconds).to.equal(7200);
+
+      // Reset to default
+      await program.methods
+        .setCooldown(3600)
+        .accountsStrict({
+          owner: owner.publicKey,
+          vault: vaultPda,
+        })
+        .signers([owner])
+        .rpc();
+    });
+
+    it("rejects cooldown below minimum (300s)", async () => {
+      try {
+        await program.methods
+          .setCooldown(100)
+          .accountsStrict({
+            owner: owner.publicKey,
+            vault: vaultPda,
+          })
+          .signers([owner])
+          .rpc();
+        expect.fail("Should have thrown");
+      } catch (err: any) {
+        expect(err.error.errorCode.code).to.equal("CooldownTooShort");
+      }
+    });
+  });
+
+  describe("bond slashing", () => {
+    it("slashes bond on overdraw and compensates recipient", async () => {
+      // Deposit more to have a clear bond
+      const vaultTokenAccount = getAssociatedTokenAddressSync(
+        tokenMint,
+        vaultPda,
+        true
+      );
+      await program.methods
+        .deposit(new anchor.BN("2000000000")) // 2 more tokens
+        .accountsStrict({
+          owner: owner.publicKey,
+          vault: vaultPda,
+          tokenMint,
+          ownerTokenAccount,
+          vaultTokenAccount,
+          tokenProgram: TOKEN_PROGRAM_ID,
+        })
+        .signers([owner])
+        .rpc();
+
+      // Check vault state: with 30% reserve, not all balance is available for IOUs
+      const vaultBefore = await program.account.vault.fetch(vaultPda);
+      const remaining =
+        vaultBefore.depositedAmount.toNumber() -
+        vaultBefore.spentAmount.toNumber();
+      const bond = Math.floor((remaining * 3000) / 10000);
+      const availableForIous = remaining - bond;
+
+      // Create IOU for more than available (but less than remaining)
+      // This should fail but slash from the bond
+      const nonce = 10n;
+      const amount = BigInt(availableForIous + 1); // 1 more than available
+
+      const recipientBalanceBefore = await getAccount(
+        connection,
+        getAssociatedTokenAddressSync(tokenMint, recipient.publicKey)
+      );
+
+      const iouMessage = createIOUMessageBytes({
+        vault: vaultPda,
+        sender: owner.publicKey,
+        recipient: recipient.publicKey,
+        tokenMint,
+        amount,
+        nonce,
+        expiry: 0n,
+        sgtMint,
+      });
+
+      const ed25519Ix = Ed25519Program.createInstructionWithPrivateKey({
+        privateKey: owner.secretKey,
+        message: iouMessage,
+      });
+      const sigOffset = ed25519Ix.data[2] | (ed25519Ix.data[3] << 8);
+      const signature = ed25519Ix.data.slice(sigOffset, sigOffset + 64);
+
+      const recipientTokenAccount = getAssociatedTokenAddressSync(
+        tokenMint,
+        recipient.publicKey
+      );
+      const [settlementRecordPda] = PublicKey.findProgramAddressSync(
+        [
+          Buffer.from("settlement"),
+          vaultPda.toBuffer(),
+          nonceToLeBytes(nonce),
+        ],
+        program.programId
+      );
+
+      const settleIx = await program.methods
+        .settleIou(
+          Buffer.from(iouMessage),
+          Array.from(signature) as any,
+          new anchor.BN(nonce.toString())
+        )
+        .accountsStrict({
+          settler: settler.publicKey,
+          vault: vaultPda,
+          tokenMint,
+          vaultTokenAccount,
+          recipient: recipient.publicKey,
+          recipientTokenAccount,
+          settlementRecord: settlementRecordPda,
+          reputation: reputationPda,
+          instructionsSysvar: SYSVAR_INSTRUCTIONS_PUBKEY,
+          systemProgram: SystemProgram.programId,
+          tokenProgram: TOKEN_PROGRAM_ID,
+          associatedTokenProgram: ASSOCIATED_TOKEN_PROGRAM_ID,
+        })
+        .signers([settler])
+        .instruction();
+
+      const tx = new Transaction().add(ed25519Ix).add(settleIx);
+      await sendAndConfirmTransaction(connection, tx, [settler]);
+
+      // Verify settlement record shows failure with slash
+      const record = await program.account.settlementRecord.fetch(
+        settlementRecordPda
+      );
+      expect(record.success).to.be.false;
+      expect(record.slashAmount.toNumber()).to.be.greaterThan(0);
+
+      // Verify vault total_slashed updated
+      const vaultAfter = await program.account.vault.fetch(vaultPda);
+      expect(vaultAfter.totalSlashed.toNumber()).to.be.greaterThan(0);
+
+      // Verify recipient received the slashed amount
+      const recipientBalanceAfter = await getAccount(
+        connection,
+        recipientTokenAccount
+      );
+      expect(
+        Number(recipientBalanceAfter.amount) -
+          Number(recipientBalanceBefore.amount)
+      ).to.equal(record.slashAmount.toNumber());
     });
   });
 });
