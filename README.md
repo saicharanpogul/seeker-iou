@@ -1,6 +1,23 @@
 # seeker-iou
 
+[![npm version](https://img.shields.io/npm/v/seeker-iou.svg)](https://www.npmjs.com/package/seeker-iou)
+[![CI](https://github.com/saicharanpogul/seeker-iou/actions/workflows/ci.yml/badge.svg)](https://github.com/saicharanpogul/seeker-iou/actions)
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
+[![Anchor](https://img.shields.io/badge/Anchor-0.31.1-blueviolet)](https://www.anchor-lang.com/)
+[![Solana](https://img.shields.io/badge/Solana-2.2.20-14F195?logo=solana)](https://solana.com)
+
 **Offline payment infrastructure for Solana Seeker. Vault-based IOUs exchanged over NFC. Settles on-chain when connectivity returns.**
+
+| | |
+|---|---|
+| **Program ID** | `Appq4U1rTS4tCo4E84qhQs777z3awXf6K55amgnZ5srC` |
+| **SDK** | [`seeker-iou` on npm](https://www.npmjs.com/package/seeker-iou) |
+| **Framework** | Anchor 0.31.1 |
+| **Tests** | 62 passing (28 Anchor + 34 SDK) |
+| **Security** | [Self-audit report](docs/AUDIT_REPORT.md) (22 findings, 4 fixes applied) |
+| **How it works** | [Detailed walkthrough](docs/HOWITWORKS.md) |
+
+---
 
 ## Why this exists
 
@@ -48,6 +65,8 @@ The recipient's phone stores the IOU. Your phone decrements your local balance a
 
 When anyone reconnects, they submit collected IOUs to the Solana program. The program verifies every signature, checks nonces, and transfers funds from vaults to recipients. One batch. On Solana. At Solana speed. Three weeks of a village economy settling in under a second.
 
+> **[See the detailed step-by-step walkthrough with diagrams](docs/HOWITWORKS.md)**
+
 ## Why Seeker
 
 This can only exist on Seeker. Every component depends on hardware no other phone has.
@@ -62,14 +81,15 @@ This can only exist on Seeker. Every component depends on hardware no other phon
 
 ## Anti-cheat
 
-Offline payments have a fundamental trust problem: without network state, you can't verify someone's balance in real time. seeker-iou solves this through six layers of accountability:
+Offline payments have a fundamental trust problem: without network state, you can't verify someone's balance in real time. seeker-iou solves this through seven layers of accountability:
 
-1. **Vault balance visibility**: recipient sees the sender's deposited amount (cached from last sync) before accepting.
-2. **SGT-linked reputation**: every settlement (success or failure) updates a permanent reputation score tied to the sender's device.
-3. **Nonce ordering**: sequential IOUs prevent replay and double-spend. First to settle wins.
-4. **Deactivation cooldown**: vault owners can't instantly drain funds after issuing IOUs. A cooldown window lets pending IOUs settle first.
-5. **Failed settlements still record**: even if an IOU fails due to insufficient funds, it hits the sender's reputation. Cheating is always visible.
-6. **Configurable risk tiers**: apps set their own thresholds. Auto-accept under 10 SKR. Show trust score for larger amounts. Refuse offline above a ceiling.
+1. **Hardware signing**: Seed Vault signs IOUs at the hardware level. Can't be faked even with compromised software.
+2. **Device identity**: SGT ties wallet to physical device. Can't create new accounts.
+3. **Nonce ordering**: Sequential IOUs prevent replay and double-spend. First to settle wins.
+4. **SGT-linked reputation**: Every settlement (success or failure) permanently updates the sender's trust score.
+5. **Bond / overcollateralization**: Reserve ratio locks a percentage of vault funds as bond. Slashed on failed settlements to partially compensate cheated recipients.
+6. **Deactivation cooldown**: Vault owners can't instantly drain funds after issuing IOUs. Configurable cooldown (min 5 min, default 1 hour) gives IOU holders time to settle.
+7. **Client-side risk tiers**: Apps check cached balance + trust score before accepting. Configurable thresholds per merchant.
 
 None of this is trustless. That's impossible offline. But it creates accountability strong enough for the use case: neighbors trading essentials during a crisis.
 
@@ -96,42 +116,73 @@ This isn't a replacement for Solana Pay. It's an extension to the places Solana 
 │  Instructions:                                            │
 │  create_vault → deposit → settle_iou                      │
 │  deactivate_vault → withdraw                              │
-│  reactivate_vault                                         │
+│  reactivate_vault → set_reserve_ratio → set_cooldown      │
 └───────────────────────────────┬──────────────────────────┘
                                 │
 ┌───────────────────────────────┴──────────────────────────┐
-│                    TypeScript SDK                          │
+│                    TypeScript SDK (npm: seeker-iou)        │
 │  ┌─────┐ ┌─────┐ ┌──────────┐ ┌──────────┐ ┌─────────┐ │
 │  │ IOU │ │ NFC │ │Settlement│ │Reputation│ │  Local  │ │
 │  │     │ │     │ │ Builder  │ │  Query   │ │  State  │ │
 │  └─────┘ └─────┘ └──────────┘ └──────────┘ └─────────┘ │
+│  ┌──────────┐ ┌──────────────┐ ┌──────────────────────┐ │
+│  │  Seeker  │ │ Verification │ │   Vault Builders     │ │
+│  │  (SGT)   │ │  (Ed25519)   │ │   + Config           │ │
+│  └──────────┘ └──────────────┘ └──────────────────────┘ │
+└──────────────────────────────────────────────────────────┘
+                                │
+┌───────────────────────────────┴──────────────────────────┐
+│                    Mobile App (React Native)               │
+│  Screens: Home │ Pay │ Receive │ Settle │ Vault           │
+│  Services: Seed Vault │ NFC │ Storage │ Payment           │
+└──────────────────────────────────────────────────────────┘
+                                │
+┌───────────────────────────────┴──────────────────────────┐
+│                    Event Indexer                            │
+│  WebSocket subscription → SQLite → Settlement explorer    │
 └──────────────────────────────────────────────────────────┘
 ```
 
 ### Program Accounts
 
-- **Vault** — One per user per token mint. PDA: `[b"vault", owner, token_mint]`. Holds deposited funds and tracks nonces.
-- **SettlementRecord** — One per settled IOU. PDA: `[b"settlement", vault, nonce]`. Prevents replay and provides receipts.
-- **ReputationAccount** — One per SGT. PDA: `[b"reputation", sgt_mint]`. Tracks lifetime settlement success/failure.
+| Account | PDA Seeds | Purpose |
+|---|---|---|
+| **Vault** | `[b"vault", owner, token_mint]` | Holds deposited funds, tracks nonces and reserve ratio |
+| **SettlementRecord** | `[b"settlement", vault, nonce]` | Prevents replay, provides on-chain receipts |
+| **ReputationAccount** | `[b"reputation", sgt_mint]` | Tracks lifetime settlement success/failure per device |
+
+### Instructions
+
+| Instruction | CU | Description |
+|---|---|---|
+| `create_vault` | 58,474 | Create vault with SGT verification, reserve ratio, cooldown |
+| `deposit` | 20,417 | SPL token transfer into vault |
+| `settle_iou` | 57,966 | Ed25519 verify + transfer (or bond slash on failure) |
+| `deactivate_vault` | 4,526 | Start cooldown, block new settlements |
+| `reactivate_vault` | 4,331 | Cancel deactivation |
+| `withdraw` | ~20,000 | Transfer remaining balance after cooldown |
+| `set_reserve_ratio` | 4,379 | Update bond percentage (0-100%) |
+| `set_cooldown` | 4,387 | Update cooldown period (min 5 min) |
 
 ### IOU Message Format
 
-217-byte Borsh-serialized struct: version (1) + vault (32) + sender (32) + recipient (32) + token_mint (32) + amount (8) + nonce (8) + expiry (8) + sgt_mint (32) + memo (32). With 64-byte Ed25519 signature: 281 bytes total NFC payload.
+217-byte Borsh-serialized struct: version (1) + vault (32) + sender (32) + recipient (32) + token_mint (32) + amount (8) + nonce (8) + expiry (8) + sgt_mint (32) + memo (32). With 64-byte Ed25519 signature: **281 bytes total NFC payload**.
 
 ## Quick Start
 
-### SDK Installation
+### Install the SDK
 
 ```bash
 bun add seeker-iou
+# or
+npm install seeker-iou
 ```
 
 ### Create and Sign an IOU
 
 ```typescript
-import { createIOUMessage, encodeNFCPayload, deriveVaultPda } from "seeker-iou";
+import { createIOUMessage, encodeNFCPayload } from "seeker-iou";
 
-// Create IOU message
 const iouBytes = createIOUMessage({
   vault: vaultPda,
   sender: walletPublicKey,
@@ -148,7 +199,6 @@ const signature = await seedVault.signMessage(iouBytes);
 
 // Encode for NFC transfer
 const nfcPayload = encodeNFCPayload({ message: iouBytes, signature });
-// → Send nfcPayload over NFC
 ```
 
 ### Settle Received IOUs
@@ -174,15 +224,18 @@ const tx = new Transaction().add(ed25519Ix).add(settleIx);
 await sendAndConfirmTransaction(connection, tx, [myKeypair]);
 ```
 
-### Check Reputation
+### Verify Seeker + Check Reputation
 
 ```typescript
-import { getReputation, calculateTrustScore } from "seeker-iou";
+import { verifySeekerForVault, getReputation, calculateTrustScore } from "seeker-iou";
 
+// Verify SGT ownership before vault creation
+const sgtMint = await verifySeekerForVault(connection, walletAddress);
+
+// Check sender reputation
 const rep = await getReputation(connection, senderSgtMint);
 if (rep) {
-  const score = calculateTrustScore(rep);
-  console.log(`Trust score: ${score}`); // 0.0 to 1.0
+  const score = calculateTrustScore(rep); // 0.0 to 1.0
 }
 ```
 
@@ -198,52 +251,82 @@ if (rep) {
 ### Build
 
 ```bash
-# Install dependencies
 bun install
-
-# Build the Solana program
-anchor build
-
-# Build the SDK
-bunx turbo build
+anchor build       # Solana program
+bunx turbo build   # TypeScript SDK
 ```
 
 ### Test
 
 ```bash
-# Run Anchor integration tests (starts local validator)
-anchor test
+anchor test        # 28 integration tests (happy paths + attack vectors + benchmarks)
+bunx turbo test    # 34 SDK unit tests
+```
 
-# Run SDK unit tests
-bunx turbo test
+### Run the Indexer
+
+```bash
+cd packages/indexer
+bun install
+RPC_URL=https://api.devnet.solana.com bun run dev
 ```
 
 ### Project Structure
 
 ```
 seeker-iou/
-├── programs/seeker-iou/src/
-│   ├── lib.rs
-│   ├── instructions/        # create_vault, deposit, settle_iou, etc.
-│   ├── state/               # Vault, SettlementRecord, ReputationAccount
-│   ├── iou/                 # IOUMessage Borsh struct
+├── programs/seeker-iou/src/       # Anchor program (8 instructions)
+│   ├── instructions/              # create_vault, deposit, settle_iou, etc.
+│   ├── state/                     # Vault, SettlementRecord, ReputationAccount
+│   ├── iou/                       # IOUMessage Borsh struct
 │   ├── errors.rs
 │   └── events.rs
-├── packages/sdk/src/
-│   ├── iou.ts               # IOU creation + serialization
-│   ├── nfc.ts               # NFC payload encoding
-│   ├── vault.ts             # Vault instruction builders
-│   ├── settlement.ts        # Settlement instruction builders
-│   ├── reputation.ts        # Reputation queries
-│   ├── local-state.ts       # Offline state management
-│   ├── verification.ts      # Client-side sig verification
-│   ├── types.ts, constants.ts, errors.ts, utils.ts
-│   └── index.ts
-├── tests/                   # Anchor integration tests
+├── packages/sdk/                  # TypeScript SDK (npm: seeker-iou)
+│   ├── src/                       # 12 modules
+│   └── tests/                     # 34 unit tests
+├── packages/indexer/              # Event indexer (SQLite + WebSocket)
+│   └── src/
+├── app/                           # React Native mobile app for Seeker
+│   └── src/
+│       ├── screens/               # Home, Pay, Receive, Settle
+│       ├── services/              # wallet, nfc, payment, vault, storage
+│       └── hooks/                 # useVault, useReputation
+├── tests/                         # Anchor integration tests + benchmarks
+├── docs/
+│   ├── PRD.md                     # Product Requirements Document
+│   ├── HOWITWORKS.md              # Detailed flow walkthrough
+│   ├── SECURITY_AUDIT.md          # Self-audit findings
+│   └── AUDIT_REPORT.md            # Formal audit report for external auditors
+├── .github/workflows/ci.yml      # GitHub Actions CI
 ├── Anchor.toml
 ├── turbo.json
 └── package.json
 ```
+
+## Security
+
+A comprehensive self-audit has been completed covering all 8 instructions, 3 account types, and 11 source files.
+
+| Severity | Count | Status |
+|---|---|---|
+| Critical | 0 | - |
+| High | 0 | - |
+| Medium | 5 | 3 fixed, 1 mitigated, 1 by design |
+| Low | 10 | 1 fixed, 7 mitigated, 2 by design |
+| Info | 4 | By design |
+
+**Key fixes applied:**
+- Ed25519 instruction_index validation (prevents cross-instruction injection)
+- Config changes blocked after vault deactivation (prevents cooldown bypass)
+- Withdraw uses actual token balance as safety bound
+
+**Reports:**
+- [Self-audit summary](docs/SECURITY_AUDIT.md)
+- [Formal audit report for external auditors](docs/AUDIT_REPORT.md)
+
+> This software has not been externally audited. Do not use in production with real funds until a professional security audit is completed.
+
+If you discover a vulnerability, report it privately via [GitHub Security Advisories](https://github.com/saicharanpogul/seeker-iou/security/advisories).
 
 ## Contributing
 
@@ -253,12 +336,6 @@ seeker-iou/
 4. Ensure `anchor build` and `bunx turbo build` pass
 5. Ensure `anchor test` and `bunx turbo test` pass
 6. Submit a PR
-
-## Security
-
-This software is in active development and has not been audited. Do not use in production with real funds until a security audit has been completed.
-
-If you discover a security vulnerability, please report it privately via GitHub Security Advisories rather than opening a public issue.
 
 ## License
 
