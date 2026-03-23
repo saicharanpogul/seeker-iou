@@ -1,0 +1,10 @@
+node_modules/
+target/
+dist/
+.anchor/
+.turbo/
+test-ledger/
+*.log
+.env
+.env.local
+.DS_Store
