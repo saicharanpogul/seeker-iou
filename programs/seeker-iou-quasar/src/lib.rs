@@ -68,3 +68,6 @@ mod seeker_iou {
         ctx.accounts.set_cooldown(cooldown_seconds)
     }
 }
+
+#[cfg(test)]
+mod tests;
