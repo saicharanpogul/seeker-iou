@@ -15,10 +15,26 @@
   "files": [
     "dist"
   ],
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/saicharanpogul/seeker-iou.git",
+    "directory": "packages/sdk"
+  },
+  "keywords": [
+    "solana",
+    "seeker",
+    "iou",
+    "nfc",
+    "offline-payments",
+    "vault",
+    "settlement"
+  ],
   "scripts": {
     "build": "tsup",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "prepublishOnly": "tsup"
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.1",
