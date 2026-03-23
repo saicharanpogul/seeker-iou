@@ -51,6 +51,27 @@ export function formatAmount(
   return `${whole}.${fractionStr}`;
 }
 
+/**
+ * Calculate the bond amount for a vault given its remaining balance and reserve ratio.
+ */
+export function calculateBondAmount(
+  remainingBalance: bigint,
+  reserveRatioBps: number
+): bigint {
+  return (remainingBalance * BigInt(reserveRatioBps)) / 10000n;
+}
+
+/**
+ * Calculate the balance available for IOUs (remaining minus bond).
+ */
+export function calculateAvailableForIOUs(
+  remainingBalance: bigint,
+  reserveRatioBps: number
+): bigint {
+  const bond = calculateBondAmount(remainingBalance, reserveRatioBps);
+  return remainingBalance - bond;
+}
+
 export function parseAmount(
   amount: string,
   decimals: number

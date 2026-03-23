@@ -195,7 +195,16 @@
           "address": "ATokenGPvbdGVxr1b2hvZbsiqW5xWH25efTNsLJA8knL"
         }
       ],
-      "args": []
+      "args": [
+        {
+          "name": "reserve_ratio_bps",
+          "type": "u16"
+        },
+        {
+          "name": "cooldown_seconds",
+          "type": "u32"
+        }
+      ]
     },
     {
       "name": "deactivate_vault",
@@ -454,6 +463,116 @@
         }
       ],
       "args": []
+    },
+    {
+      "name": "set_cooldown",
+      "discriminator": [
+        57,
+        78,
+        91,
+        178,
+        112,
+        152,
+        211,
+        87
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "signer": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "account",
+                "path": "vault.token_mint",
+                "account": "Vault"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "cooldown_seconds",
+          "type": "u32"
+        }
+      ]
+    },
+    {
+      "name": "set_reserve_ratio",
+      "discriminator": [
+        232,
+        133,
+        236,
+        57,
+        147,
+        125,
+        249,
+        252
+      ],
+      "accounts": [
+        {
+          "name": "owner",
+          "signer": true,
+          "relations": [
+            "vault"
+          ]
+        },
+        {
+          "name": "vault",
+          "writable": true,
+          "pda": {
+            "seeds": [
+              {
+                "kind": "const",
+                "value": [
+                  118,
+                  97,
+                  117,
+                  108,
+                  116
+                ]
+              },
+              {
+                "kind": "account",
+                "path": "owner"
+              },
+              {
+                "kind": "account",
+                "path": "vault.token_mint",
+                "account": "Vault"
+              }
+            ]
+          }
+        }
+      ],
+      "args": [
+        {
+          "name": "reserve_ratio_bps",
+          "type": "u16"
+        }
+      ]
     },
     {
       "name": "settle_iou",
@@ -893,6 +1012,19 @@
   ],
   "events": [
     {
+      "name": "CooldownUpdated",
+      "discriminator": [
+        218,
+        243,
+        64,
+        218,
+        83,
+        130,
+        100,
+        234
+      ]
+    },
+    {
       "name": "Deposited",
       "discriminator": [
         111,
@@ -929,6 +1061,19 @@
         77,
         242,
         30
+      ]
+    },
+    {
+      "name": "ReserveRatioUpdated",
+      "discriminator": [
+        205,
+        174,
+        136,
+        1,
+        88,
+        177,
+        203,
+        141
       ]
     },
     {
@@ -1104,9 +1249,43 @@
       "code": 6023,
       "name": "ArithmeticOverflow",
       "msg": "Arithmetic overflow"
+    },
+    {
+      "code": 6024,
+      "name": "InvalidReserveRatio",
+      "msg": "Reserve ratio must be between 0 and 10000 basis points"
+    },
+    {
+      "code": 6025,
+      "name": "CooldownTooShort",
+      "msg": "Cooldown must be at least 300 seconds (5 minutes)"
     }
   ],
   "types": [
+    {
+      "name": "CooldownUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "old_cooldown",
+            "type": "u32"
+          },
+          {
+            "name": "new_cooldown",
+            "type": "u32"
+          }
+        ]
+      }
+    },
     {
       "name": "Deposited",
       "type": {
@@ -1155,6 +1334,13 @@
           {
             "name": "reason",
             "type": "string"
+          },
+          {
+            "name": "slash_amount",
+            "docs": [
+              "Amount slashed from bond and transferred to recipient as partial compensation"
+            ],
+            "type": "u64"
           }
         ]
       }
@@ -1228,6 +1414,30 @@
       }
     },
     {
+      "name": "ReserveRatioUpdated",
+      "type": {
+        "kind": "struct",
+        "fields": [
+          {
+            "name": "vault",
+            "type": "pubkey"
+          },
+          {
+            "name": "owner",
+            "type": "pubkey"
+          },
+          {
+            "name": "old_ratio_bps",
+            "type": "u16"
+          },
+          {
+            "name": "new_ratio_bps",
+            "type": "u16"
+          }
+        ]
+      }
+    },
+    {
       "name": "SettlementRecord",
       "type": {
         "kind": "struct",
@@ -1259,6 +1469,14 @@
           {
             "name": "success",
             "type": "bool"
+          },
+          {
+            "name": "slash_amount",
+            "docs": [
+              "Amount slashed from the vault bond to partially compensate the recipient",
+              "on a failed settlement. Zero if settlement succeeded or no bond exists."
+            ],
+            "type": "u64"
           },
           {
             "name": "bump",
@@ -1315,6 +1533,23 @@
           {
             "name": "cooldown_seconds",
             "type": "u32"
+          },
+          {
+            "name": "reserve_ratio_bps",
+            "docs": [
+              "Reserve ratio in basis points (0-10000). E.g. 3000 = 30% reserve.",
+              "Only (100% - reserve%) of remaining balance is available for IOUs.",
+              "The reserved portion acts as a bond — slashed on failed settlements",
+              "to partially compensate cheated recipients."
+            ],
+            "type": "u16"
+          },
+          {
+            "name": "total_slashed",
+            "docs": [
+              "Cumulative amount slashed from the bond for failed settlements."
+            ],
+            "type": "u64"
           },
           {
             "name": "bump",

@@ -22,6 +22,10 @@ export async function createVaultInstruction(params: {
   tokenMint: PublicKey;
   sgtMint: PublicKey;
   sgtTokenAccount: PublicKey;
+  /** Reserve ratio in basis points (0-10000). Default 0. */
+  reserveRatioBps?: number;
+  /** Cooldown in seconds. Pass 0 for default (3600). Min 300. */
+  cooldownSeconds?: number;
 }): Promise<TransactionInstruction> {
   const [vaultPda] = deriveVaultPda(params.owner, params.tokenMint);
   const [reputationPda] = deriveReputationPda(params.sgtMint);
@@ -33,7 +37,7 @@ export async function createVaultInstruction(params: {
 
   const program = getProgram();
   return program.methods
-    .createVault()
+    .createVault(params.reserveRatioBps ?? 0, params.cooldownSeconds ?? 0)
     .accountsStrict({
       owner: params.owner,
       vault: vaultPda,
@@ -132,6 +136,36 @@ export async function createWithdrawInstruction(params: {
       vaultTokenAccount,
       ownerTokenAccount,
       tokenProgram: TOKEN_PROGRAM_ID,
+    })
+    .instruction();
+}
+
+export async function createSetReserveRatioInstruction(params: {
+  owner: PublicKey;
+  vault: PublicKey;
+  reserveRatioBps: number;
+}): Promise<TransactionInstruction> {
+  const program = getProgram();
+  return program.methods
+    .setReserveRatio(params.reserveRatioBps)
+    .accountsStrict({
+      owner: params.owner,
+      vault: params.vault,
+    })
+    .instruction();
+}
+
+export async function createSetCooldownInstruction(params: {
+  owner: PublicKey;
+  vault: PublicKey;
+  cooldownSeconds: number;
+}): Promise<TransactionInstruction> {
+  const program = getProgram();
+  return program.methods
+    .setCooldown(params.cooldownSeconds)
+    .accountsStrict({
+      owner: params.owner,
+      vault: params.vault,
     })
     .instruction();
 }

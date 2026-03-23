@@ -12,6 +12,10 @@ export interface VaultAccount {
   isActive: boolean;
   deactivatedAt: bigint;
   cooldownSeconds: number;
+  /** Reserve ratio in basis points (0-10000). Portion of remaining balance locked as bond. */
+  reserveRatioBps: number;
+  /** Cumulative amount slashed from the bond for failed settlements. */
+  totalSlashed: bigint;
   bump: number;
 }
 
@@ -23,6 +27,8 @@ export interface SettlementRecord {
   settledAt: bigint;
   settledBy: PublicKey;
   success: boolean;
+  /** Amount slashed from bond on failed settlement (0 if success or no bond). */
+  slashAmount: bigint;
   bump: number;
 }
 

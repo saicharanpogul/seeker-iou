@@ -12,6 +12,8 @@ export {
   NFC_PAYLOAD_SIZE,
   IOU_VERSION,
   DEFAULT_COOLDOWN_SECONDS,
+  MIN_COOLDOWN_SECONDS,
+  MAX_RESERVE_RATIO_BPS,
 } from "./constants";
 
 // Types
@@ -45,6 +47,8 @@ export {
   deriveReputationPda,
   formatAmount,
   parseAmount,
+  calculateBondAmount,
+  calculateAvailableForIOUs,
 } from "./utils";
 
 // IOU
@@ -67,6 +71,8 @@ export {
   createDeactivateVaultInstruction,
   createReactivateVaultInstruction,
   createWithdrawInstruction,
+  createSetReserveRatioInstruction,
+  createSetCooldownInstruction,
 } from "./vault";
 
 // Settlement instructions
