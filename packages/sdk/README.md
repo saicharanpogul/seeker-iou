@@ -10,6 +10,32 @@ bun add seeker-iou
 
 ## API Reference
 
+### Seeker Device Verification (via seeker-sdk)
+
+```typescript
+import {
+  verifySeekerForVault,
+  isSeeker,
+  resolveRecipientDisplay,
+  resolveSkrDomain,
+  reverseResolveSkr,
+} from "seeker-iou";
+
+// Verify SGT ownership before vault creation (returns SGT mint PublicKey)
+const sgtMint = await verifySeekerForVault(connection, walletAddress);
+
+// Simple boolean check
+if (await isSeeker(connection, walletAddress)) { /* ... */ }
+
+// Resolve recipient to human-readable .skr domain
+const display = await resolveRecipientDisplay(connection, recipientAddress);
+// "chai-vendor.skr" or null
+
+// Forward/reverse .skr domain resolution
+const owner = await resolveSkrDomain(connection, "chai-vendor.skr");
+const domain = await reverseResolveSkr(connection, walletAddress);
+```
+
 ### IOU Creation
 
 ```typescript

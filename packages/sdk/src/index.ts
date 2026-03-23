@@ -2,6 +2,8 @@
 export {
   PROGRAM_ID,
   SGT_MINT_AUTHORITY,
+  SGT_METADATA_ADDRESS,
+  SGT_GROUP_MINT_ADDRESS,
   VAULT_SEED,
   SETTLEMENT_SEED,
   REPUTATION_SEED,
@@ -88,3 +90,18 @@ export {
   serializeLocalState,
   deserializeLocalState,
 } from "./local-state";
+
+// Seeker device verification and .skr domains (via seeker-sdk)
+export {
+  verifySGT,
+  isSeeker,
+  getSGTDetails,
+  resolveSkrDomain,
+  reverseResolveSkr,
+  isSkrDomain,
+  getSkrDomains,
+  getSeekerProfile,
+  verifySeekerForVault,
+  resolveRecipientDisplay,
+} from "./seeker";
+export type { SGTResult, SGTVerifyOptions, SeekerProfile } from "./seeker";

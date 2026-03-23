@@ -22,9 +22,10 @@
   },
   "dependencies": {
     "@coral-xyz/anchor": "^0.31.1",
-    "@solana/web3.js": "^1.95.0",
     "@solana/spl-token": "^0.4.0",
+    "@solana/web3.js": "^1.95.0",
     "borsh": "^2.0.0",
+    "seeker-sdk": "^0.2.0",
     "tweetnacl": "^1.0.3"
   },
   "devDependencies": {

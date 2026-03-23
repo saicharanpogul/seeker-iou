@@ -1,12 +1,19 @@
 import { PublicKey } from "@solana/web3.js";
+import {
+  SGT_MINT_AUTHORITY as _SGT_MINT_AUTHORITY,
+  SGT_METADATA_ADDRESS,
+  SGT_GROUP_MINT_ADDRESS,
+} from "seeker-sdk";
 
 export const PROGRAM_ID = new PublicKey(
   "Appq4U1rTS4tCo4E84qhQs777z3awXf6K55amgnZ5srC"
 );
 
-export const SGT_MINT_AUTHORITY = new PublicKey(
-  "GT2zuHVaZQYZSyQMgJPLzvkmyztfyXg2NJunqFp4p3A4"
-);
+/** SGT mint authority — sourced from seeker-sdk canonical constant */
+export const SGT_MINT_AUTHORITY = _SGT_MINT_AUTHORITY;
+
+/** SGT metadata address (also the group mint address) */
+export { SGT_METADATA_ADDRESS, SGT_GROUP_MINT_ADDRESS };
 
 export const VAULT_SEED = Buffer.from("vault");
 export const SETTLEMENT_SEED = Buffer.from("settlement");
