@@ -1,0 +1,31 @@
+use quasar_lang::prelude::*;
+
+#[error_code]
+pub enum SeekerIOUError {
+    InvalidSgtMintAuthority,
+    InvalidSgtOwner,
+    InvalidSgtBalance,
+    VaultNotActive,
+    VaultStillActive,
+    InvalidDepositAmount,
+    InvalidIOUVersion,
+    IOUVaultMismatch,
+    IOUSenderMismatch,
+    IOURecipientMismatch,
+    IOUTokenMintMismatch,
+    IOUSgtMintMismatch,
+    InvalidNonce,
+    NonceMismatch,
+    IOUExpired,
+    InvalidIOUAmount,
+    InsufficientBalance,
+    InvalidSignature,
+    MissingEd25519Instruction,
+    InvalidEd25519InstructionData,
+    CooldownNotElapsed,
+    NoBalanceToWithdraw,
+    InvalidIOUMessage,
+    ArithmeticOverflow,
+    InvalidReserveRatio,
+    CooldownTooShort,
+}
