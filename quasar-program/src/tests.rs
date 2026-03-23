@@ -7,7 +7,7 @@ fn program_id() -> Pubkey {
 }
 
 fn setup() -> QuasarSvm {
-    let elf = include_bytes!("../../../target/deploy/seeker_iou_quasar.so");
+    let elf = include_bytes!("../target/deploy/seeker_iou_quasar.so");
     QuasarSvm::new().with_program(&program_id(), elf)
 }
 

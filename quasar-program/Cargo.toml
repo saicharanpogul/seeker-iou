@@ -1,0 +1,34 @@
+[package]
+name = "seeker-iou-quasar"
+version = "0.1.0"
+edition = "2021"
+
+[lints.rust.unexpected_cfgs]
+level = "warn"
+check-cfg = [
+    'cfg(target_os, values("solana"))',
+]
+
+[lib]
+crate-type = ["cdylib"]
+
+[features]
+alloc = []
+client = []
+debug = []
+
+[dependencies]
+quasar-lang = { git = "https://github.com/blueshift-gg/quasar" }
+quasar-spl = { git = "https://github.com/blueshift-gg/quasar" }
+solana-instruction = { version = "3.2.0" }
+
+# Dev-dependencies temporarily removed — quasar-svm pulls in toml_parser 1.1.0
+# which requires edition2024 (not supported by solana toolchain rustc 1.84).
+# Re-enable once quasar-svm pins its deps or Solana toolchain updates.
+# [dev-dependencies]
+# seeker-iou-quasar-client = { path = "target/client/rust/seeker-iou-quasar-client" }
+# quasar-svm = { git = "https://github.com/blueshift-gg/quasar-svm" }
+# solana-account = { version = "3.4.0" }
+# solana-address = { version = "2.2.0", features = ["decode"] }
+# solana-instruction = { version = "3.2.0", features = ["bincode"] }
+# solana-pubkey = { version = "4.1.0" }
