@@ -14,8 +14,12 @@ declare_id!("Appq4U1rTS4tCo4E84qhQs777z3awXf6K55amgnZ5srC");
 pub mod seeker_iou {
     use super::*;
 
-    pub fn create_vault(ctx: Context<CreateVault>) -> Result<()> {
-        instructions::create_vault::handler(ctx)
+    pub fn create_vault(
+        ctx: Context<CreateVault>,
+        reserve_ratio_bps: u16,
+        cooldown_seconds: u32,
+    ) -> Result<()> {
+        instructions::create_vault::handler(ctx, reserve_ratio_bps, cooldown_seconds)
     }
 
     pub fn deposit(ctx: Context<Deposit>, amount: u64) -> Result<()> {
@@ -41,5 +45,16 @@ pub mod seeker_iou {
 
     pub fn withdraw(ctx: Context<Withdraw>) -> Result<()> {
         instructions::withdraw::handler(ctx)
+    }
+
+    pub fn set_reserve_ratio(
+        ctx: Context<SetReserveRatio>,
+        reserve_ratio_bps: u16,
+    ) -> Result<()> {
+        instructions::set_reserve_ratio::handler(ctx, reserve_ratio_bps)
+    }
+
+    pub fn set_cooldown(ctx: Context<SetCooldown>, cooldown_seconds: u32) -> Result<()> {
+        instructions::set_cooldown::handler(ctx, cooldown_seconds)
     }
 }

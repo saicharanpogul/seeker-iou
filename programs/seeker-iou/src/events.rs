@@ -32,6 +32,8 @@ pub struct IOUFailed {
     pub nonce: u64,
     pub settler: Pubkey,
     pub reason: String,
+    /// Amount slashed from bond and transferred to recipient as partial compensation
+    pub slash_amount: u64,
 }
 
 #[event]
@@ -51,4 +53,20 @@ pub struct VaultWithdrawn {
     pub vault: Pubkey,
     pub owner: Pubkey,
     pub amount: u64,
+}
+
+#[event]
+pub struct ReserveRatioUpdated {
+    pub vault: Pubkey,
+    pub owner: Pubkey,
+    pub old_ratio_bps: u16,
+    pub new_ratio_bps: u16,
+}
+
+#[event]
+pub struct CooldownUpdated {
+    pub vault: Pubkey,
+    pub owner: Pubkey,
+    pub old_cooldown: u32,
+    pub new_cooldown: u32,
 }

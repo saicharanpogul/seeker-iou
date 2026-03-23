@@ -14,6 +14,12 @@ pub const SGT_MINT_AUTHORITY: &str = "GT2zuHVaZQYZSyQMgJPLzvkmyztfyXg2NJunqFp4p3
 /// Default cooldown in seconds (1 hour)
 pub const DEFAULT_COOLDOWN_SECONDS: u32 = 3600;
 
+/// Minimum allowed cooldown in seconds (5 minutes)
+pub const MIN_COOLDOWN_SECONDS: u32 = 300;
+
+/// Maximum reserve ratio in basis points (100%)
+pub const MAX_RESERVE_RATIO_BPS: u16 = 10000;
+
 #[derive(Accounts)]
 pub struct CreateVault<'info> {
     #[account(mut)]
@@ -68,7 +74,25 @@ pub struct CreateVault<'info> {
     pub associated_token_program: Program<'info, AssociatedToken>,
 }
 
-pub fn handler(ctx: Context<CreateVault>) -> Result<()> {
+pub fn handler(
+    ctx: Context<CreateVault>,
+    reserve_ratio_bps: u16,
+    cooldown_seconds: u32,
+) -> Result<()> {
+    require!(
+        reserve_ratio_bps <= MAX_RESERVE_RATIO_BPS,
+        SeekerIOUError::InvalidReserveRatio
+    );
+    let cooldown = if cooldown_seconds == 0 {
+        DEFAULT_COOLDOWN_SECONDS
+    } else {
+        require!(
+            cooldown_seconds >= MIN_COOLDOWN_SECONDS,
+            SeekerIOUError::CooldownTooShort
+        );
+        cooldown_seconds
+    };
+
     let vault = &mut ctx.accounts.vault;
     let clock = Clock::get()?;
 
@@ -82,7 +106,9 @@ pub fn handler(ctx: Context<CreateVault>) -> Result<()> {
     vault.created_at = clock.unix_timestamp;
     vault.is_active = true;
     vault.deactivated_at = 0;
-    vault.cooldown_seconds = DEFAULT_COOLDOWN_SECONDS;
+    vault.cooldown_seconds = cooldown;
+    vault.reserve_ratio_bps = reserve_ratio_bps;
+    vault.total_slashed = 0;
     vault.bump = ctx.bumps.vault;
 
     let reputation = &mut ctx.accounts.reputation;

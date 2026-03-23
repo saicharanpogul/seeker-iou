@@ -50,4 +50,8 @@ pub enum SeekerIOUError {
     InvalidIOUMessage,
     #[msg("Arithmetic overflow")]
     ArithmeticOverflow,
+    #[msg("Reserve ratio must be between 0 and 10000 basis points")]
+    InvalidReserveRatio,
+    #[msg("Cooldown must be at least 300 seconds (5 minutes)")]
+    CooldownTooShort,
 }

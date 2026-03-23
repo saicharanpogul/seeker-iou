@@ -132,22 +132,21 @@ pub fn handler(
     )?;
 
     let vault = &mut ctx.accounts.vault;
-    let available_balance = vault
-        .deposited_amount
-        .checked_sub(vault.spent_amount)
-        .ok_or(SeekerIOUError::ArithmeticOverflow)?;
-
+    let available = vault.available_for_ious();
     let clock = Clock::get()?;
 
-    if available_balance >= iou.amount {
-        // Transfer tokens from vault to recipient
-        let owner_key = vault.owner;
-        let token_mint_key = ctx.accounts.token_mint.key();
+    let owner_key = vault.owner;
+    let token_mint_key = ctx.accounts.token_mint.key();
+    let vault_bump = vault.bump;
+
+    if available >= iou.amount {
+        // === SUCCESS PATH ===
+        // Transfer full amount from vault to recipient
         let seeds = &[
             b"vault",
             owner_key.as_ref(),
             token_mint_key.as_ref(),
-            &[vault.bump],
+            &[vault_bump],
         ];
         let signer_seeds = &[&seeds[..]];
 
@@ -170,7 +169,6 @@ pub fn handler(
             .ok_or(SeekerIOUError::ArithmeticOverflow)?;
         vault.current_nonce = nonce;
 
-        // Create settlement record
         let record = &mut ctx.accounts.settlement_record;
         record.vault = vault.key();
         record.recipient = ctx.accounts.recipient.key();
@@ -179,9 +177,9 @@ pub fn handler(
         record.settled_at = clock.unix_timestamp;
         record.settled_by = ctx.accounts.settler.key();
         record.success = true;
+        record.slash_amount = 0;
         record.bump = ctx.bumps.settlement_record;
 
-        // Update reputation
         let reputation = &mut ctx.accounts.reputation;
         reputation.total_issued = reputation
             .total_issued
@@ -204,7 +202,48 @@ pub fn handler(
             settler: ctx.accounts.settler.key(),
         });
     } else {
-        // Insufficient funds - still record and update reputation
+        // === FAILURE PATH — bond slashing ===
+        // Insufficient IOU-available balance. Slash from the bond to
+        // partially compensate the recipient.
+        let bond = vault.bond_amount();
+        let slash_amount = bond.min(iou.amount);
+
+        if slash_amount > 0 {
+            let seeds = &[
+                b"vault",
+                owner_key.as_ref(),
+                token_mint_key.as_ref(),
+                &[vault_bump],
+            ];
+            let signer_seeds = &[&seeds[..]];
+
+            let cpi_accounts = TransferChecked {
+                from: ctx.accounts.vault_token_account.to_account_info(),
+                mint: ctx.accounts.token_mint.to_account_info(),
+                to: ctx.accounts.recipient_token_account.to_account_info(),
+                authority: vault.to_account_info(),
+            };
+            let cpi_ctx = CpiContext::new_with_signer(
+                ctx.accounts.token_program.to_account_info(),
+                cpi_accounts,
+                signer_seeds,
+            );
+            token_interface::transfer_checked(
+                cpi_ctx,
+                slash_amount,
+                ctx.accounts.token_mint.decimals,
+            )?;
+
+            vault.spent_amount = vault
+                .spent_amount
+                .checked_add(slash_amount)
+                .ok_or(SeekerIOUError::ArithmeticOverflow)?;
+            vault.total_slashed = vault
+                .total_slashed
+                .checked_add(slash_amount)
+                .ok_or(SeekerIOUError::ArithmeticOverflow)?;
+        }
+
         vault.current_nonce = nonce;
 
         let record = &mut ctx.accounts.settlement_record;
@@ -215,6 +254,7 @@ pub fn handler(
         record.settled_at = clock.unix_timestamp;
         record.settled_by = ctx.accounts.settler.key();
         record.success = false;
+        record.slash_amount = slash_amount;
         record.bump = ctx.bumps.settlement_record;
 
         let reputation = &mut ctx.accounts.reputation;
@@ -235,6 +275,7 @@ pub fn handler(
             nonce,
             settler: ctx.accounts.settler.key(),
             reason: "Insufficient vault balance".to_string(),
+            slash_amount,
         });
     }
 
