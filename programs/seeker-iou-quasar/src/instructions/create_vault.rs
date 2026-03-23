@@ -1,5 +1,6 @@
 use quasar_lang::prelude::*;
-use quasar_spl::{AssociatedToken, AssociatedTokenProgram, InterfaceAccount, Mint, Token, TokenInterface};
+use quasar_lang::sysvars::Sysvar as SysvarTrait;
+use quasar_spl::{AssociatedTokenProgram, InterfaceAccount, Mint, Token, TokenInterface};
 
 use crate::errors::SeekerIOUError;
 use crate::events::VaultCreated;
@@ -66,31 +67,35 @@ impl<'info> CreateVault<'info> {
 
         let clock = Clock::get()?;
 
-        self.vault.owner = *self.owner.address();
-        self.vault.token_mint = *self.token_mint.address();
-        self.vault.token_account = *self.vault_token_account.address();
-        self.vault.deposited_amount = 0;
-        self.vault.spent_amount = 0;
-        self.vault.current_nonce = 0;
-        self.vault.sgt_mint = *self.sgt_mint.address();
-        self.vault.created_at = clock.unix_timestamp;
-        self.vault.is_active = true;
-        self.vault.deactivated_at = 0;
-        self.vault.cooldown_seconds = cooldown;
-        self.vault.reserve_ratio_bps = reserve_ratio_bps;
-        self.vault.total_slashed = 0;
-        self.vault.bump = bumps.vault;
+        self.vault.set_inner(
+            *self.owner.address(),           // owner
+            *self.token_mint.address(),      // token_mint
+            *self.vault_token_account.address(), // token_account
+            0u64,                            // deposited_amount
+            0u64,                            // spent_amount
+            0u64,                            // current_nonce
+            *self.sgt_mint.address(),        // sgt_mint
+            clock.unix_timestamp.get(),      // created_at
+            true,                            // is_active
+            0i64,                            // deactivated_at
+            cooldown,                        // cooldown_seconds
+            reserve_ratio_bps,               // reserve_ratio_bps
+            0u64,                            // total_slashed
+            bumps.vault,                     // bump
+        );
 
         // Init reputation if new
         if self.reputation.created_at.get() == 0 {
-            self.reputation.sgt_mint = *self.sgt_mint.address();
-            self.reputation.total_issued = 0;
-            self.reputation.total_settled = 0;
-            self.reputation.total_failed = 0;
-            self.reputation.total_volume = 0;
-            self.reputation.last_failure_at = 0;
-            self.reputation.created_at = clock.unix_timestamp;
-            self.reputation.bump = bumps.reputation;
+            self.reputation.set_inner(
+                *self.sgt_mint.address(),    // sgt_mint
+                0u64,                        // total_issued
+                0u64,                        // total_settled
+                0u64,                        // total_failed
+                0u64,                        // total_volume
+                0i64,                        // last_failure_at
+                clock.unix_timestamp.get(),  // created_at
+                bumps.reputation,            // bump
+            );
         }
 
         emit!(VaultCreated {

@@ -1,4 +1,5 @@
 use quasar_lang::prelude::*;
+use quasar_spl::{InterfaceAccount, Mint};
 
 use crate::errors::SeekerIOUError;
 use crate::events::CooldownUpdated;
@@ -11,12 +12,15 @@ pub struct SetCooldown<'info> {
 
     #[account(
         mut,
-        seeds = [b"vault", owner, vault.token_mint],
+        seeds = [b"vault", owner, token_mint],
         bump = vault.bump,
         has_one = owner,
+        has_one = token_mint,
         constraint = vault.is_active.get() @ SeekerIOUError::VaultNotActive,
     )]
     pub vault: &'info mut Account<Vault>,
+
+    pub token_mint: &'info InterfaceAccount<Mint>,
 }
 
 impl<'info> SetCooldown<'info> {
@@ -28,7 +32,7 @@ impl<'info> SetCooldown<'info> {
         );
 
         let old_cooldown = self.vault.cooldown_seconds.get();
-        self.vault.cooldown_seconds = cooldown_seconds;
+        self.vault.cooldown_seconds = cooldown_seconds.into();
 
         emit!(CooldownUpdated {
             vault: *self.vault.address(),

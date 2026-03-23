@@ -36,13 +36,11 @@ impl<'info> Deposit<'info> {
         require!(amount > 0, SeekerIOUError::InvalidDepositAmount);
 
         self.token_program
-            .transfer_checked(
+            .transfer(
                 self.owner_token_account,
-                self.token_mint,
                 self.vault_token_account,
                 self.owner,
                 amount,
-                self.token_mint.decimals(),
             )
             .invoke()?;
 
@@ -51,7 +49,8 @@ impl<'info> Deposit<'info> {
             .deposited_amount
             .get()
             .checked_add(amount)
-            .ok_or(ProgramError::from(SeekerIOUError::ArithmeticOverflow))?;
+            .ok_or(ProgramError::from(SeekerIOUError::ArithmeticOverflow))?
+            .into();
 
         emit!(Deposited {
             vault: *self.vault.address(),

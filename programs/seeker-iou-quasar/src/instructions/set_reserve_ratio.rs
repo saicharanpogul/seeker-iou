@@ -1,4 +1,5 @@
 use quasar_lang::prelude::*;
+use quasar_spl::{InterfaceAccount, Mint};
 
 use crate::errors::SeekerIOUError;
 use crate::events::ReserveRatioUpdated;
@@ -11,12 +12,15 @@ pub struct SetReserveRatio<'info> {
 
     #[account(
         mut,
-        seeds = [b"vault", owner, vault.token_mint],
+        seeds = [b"vault", owner, token_mint],
         bump = vault.bump,
         has_one = owner,
+        has_one = token_mint,
         constraint = vault.is_active.get() @ SeekerIOUError::VaultNotActive,
     )]
     pub vault: &'info mut Account<Vault>,
+
+    pub token_mint: &'info InterfaceAccount<Mint>,
 }
 
 impl<'info> SetReserveRatio<'info> {
@@ -28,7 +32,7 @@ impl<'info> SetReserveRatio<'info> {
         );
 
         let old_ratio = self.vault.reserve_ratio_bps.get();
-        self.vault.reserve_ratio_bps = reserve_ratio_bps;
+        self.vault.reserve_ratio_bps = reserve_ratio_bps.into();
 
         emit!(ReserveRatioUpdated {
             vault: *self.vault.address(),

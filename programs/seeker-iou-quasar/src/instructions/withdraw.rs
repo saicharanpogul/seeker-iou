@@ -1,4 +1,5 @@
 use quasar_lang::prelude::*;
+use quasar_lang::sysvars::Sysvar as SysvarTrait;
 use quasar_spl::{InterfaceAccount, Mint, Token, TokenCpi, TokenInterface};
 
 use crate::errors::SeekerIOUError;
@@ -42,7 +43,7 @@ impl<'info> Withdraw<'info> {
             .checked_add(self.vault.cooldown_seconds.get() as i64)
             .ok_or(ProgramError::from(SeekerIOUError::ArithmeticOverflow))?;
         require!(
-            clock.unix_timestamp >= cooldown_end,
+            clock.unix_timestamp.get() >= cooldown_end,
             SeekerIOUError::CooldownNotElapsed
         );
 
@@ -58,13 +59,11 @@ impl<'info> Withdraw<'info> {
 
         let seeds = bumps.vault_seeds();
         self.token_program
-            .transfer_checked(
+            .transfer(
                 self.vault_token_account,
-                self.token_mint,
                 self.owner_token_account,
                 self.vault,
                 remaining,
-                self.token_mint.decimals(),
             )
             .invoke_signed(&seeds)?;
 
@@ -73,7 +72,8 @@ impl<'info> Withdraw<'info> {
             .spent_amount
             .get()
             .checked_add(remaining)
-            .ok_or(ProgramError::from(SeekerIOUError::ArithmeticOverflow))?;
+            .ok_or(ProgramError::from(SeekerIOUError::ArithmeticOverflow))?
+            .into();
 
         emit!(VaultWithdrawn {
             vault: *self.vault.address(),
