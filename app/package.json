@@ -1,0 +1,32 @@
+{
+  "name": "seeker-iou-app",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start": "expo start",
+    "android": "expo run:android",
+    "ios": "expo run:ios"
+  },
+  "dependencies": {
+    "@coral-xyz/anchor": "^0.31.1",
+    "@solana-mobile/mobile-wallet-adapter-protocol": "^2.0.0",
+    "@solana-mobile/mobile-wallet-adapter-protocol-web3js": "^2.0.0",
+    "@solana-mobile/seed-vault-lib": "^0.7.0",
+    "@solana/web3.js": "^1.95.0",
+    "expo": "~52.0.0",
+    "react": "18.3.1",
+    "react-native": "0.76.0",
+    "react-native-nfc-manager": "^3.14.0",
+    "seeker-iou": "^0.1.0",
+    "seeker-sdk": "^0.2.0",
+    "@react-navigation/native": "^7.0.0",
+    "@react-navigation/native-stack": "^7.0.0",
+    "react-native-screens": "~4.0.0",
+    "react-native-safe-area-context": "^5.0.0",
+    "react-native-mmkv": "^3.0.0"
+  },
+  "devDependencies": {
+    "@types/react": "~18.3.0",
+    "typescript": "^5.4.0"
+  }
+}
