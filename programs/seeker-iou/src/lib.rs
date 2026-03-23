@@ -17,4 +17,8 @@ pub mod seeker_iou {
     pub fn create_vault(ctx: Context<CreateVault>) -> Result<()> {
         instructions::create_vault::handler(ctx)
     }
+
+    pub fn deposit(ctx: Context<Deposit>, amount: u64) -> Result<()> {
+        instructions::deposit::handler(ctx, amount)
+    }
 }
