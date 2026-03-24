@@ -7,6 +7,7 @@ const RPC_URL = "https://api.devnet.solana.com";
 export const connection = new Connection(RPC_URL, "confirmed");
 
 let cachedPublicKey: PublicKey | null = null;
+let cachedAuthToken: string | null = null;
 
 // Dev mode keypair
 let devKeypair: Keypair | null = null;
@@ -53,8 +54,9 @@ export async function connectWallet(): Promise<PublicKey> {
   }
 
   const transact = await getTransact();
+  let authToken: string | null = null;
   const result = await transact(async (wallet: any) => {
-    return wallet.authorize({
+    const auth = await wallet.authorize({
       cluster: "devnet",
       identity: {
         name: "seeker-iou",
@@ -62,8 +64,17 @@ export async function connectWallet(): Promise<PublicKey> {
         icon: "favicon.ico",
       },
     });
+    authToken = auth.auth_token;
+    return auth;
   });
-  cachedPublicKey = new PublicKey(result.accounts[0].address);
+
+  // MWA returns address as base64-encoded string (not base58)
+  const addr = result.accounts[0].address;
+  const bytes = typeof addr === "string"
+    ? Buffer.from(addr, "base64")
+    : Buffer.from(addr);
+  cachedPublicKey = new PublicKey(bytes);
+  cachedAuthToken = authToken;
   return cachedPublicKey;
 }
 
@@ -80,11 +91,12 @@ export async function signMessage(message: Uint8Array): Promise<Uint8Array> {
     return signature;
   }
 
-  if (!cachedPublicKey) throw new Error("Wallet not connected.");
+  if (!cachedPublicKey || !cachedAuthToken) throw new Error("Wallet not connected.");
   const transact = await getTransact();
   const signatures = await transact(async (wallet: any) => {
+    await wallet.reauthorize({ auth_token: cachedAuthToken });
     return wallet.signMessages({
-      addresses: [cachedPublicKey!.toBase58()],
+      addresses: [cachedPublicKey!.toBytes()],
       payloads: [message],
     });
   });
@@ -106,13 +118,14 @@ export async function signAndSendTransaction(
     return fakeSig;
   }
 
-  if (!cachedPublicKey) throw new Error("Wallet not connected.");
+  if (!cachedPublicKey || !cachedAuthToken) throw new Error("Wallet not connected.");
   const latestBlockhash = await connection.getLatestBlockhash();
   transaction.recentBlockhash = latestBlockhash.blockhash;
   transaction.feePayer = cachedPublicKey;
 
   const transact = await getTransact();
   const signatures = await transact(async (wallet: any) => {
+    await wallet.reauthorize({ auth_token: cachedAuthToken });
     return wallet.signAndSendTransactions({ transactions: [transaction] });
   });
   const sig = signatures[0];
@@ -126,5 +139,6 @@ export async function signAndSendTransaction(
 
 export function disconnect(): void {
   cachedPublicKey = null;
+  cachedAuthToken = null;
   devKeypair = null;
 }
