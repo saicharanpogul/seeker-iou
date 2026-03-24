@@ -1,9 +1,10 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert } from "react-native";
-import { PublicKey } from "@solana/web3.js";
-import { parseAmount, formatAmount } from "seeker-iou";
+import { PublicKey, Keypair } from "@solana/web3.js";
+import { parseAmount, formatAmount, isSkrDomain } from "seeker-iou";
 import { sendPayment } from "../services/payment";
 import { useApp } from "../context/AppContext";
+import { DEV_MODE } from "../services/devMode";
 
 export function PayScreen({ navigation }: { navigation: any }) {
   const { refreshState } = useApp();
@@ -20,11 +21,36 @@ export function PayScreen({ navigation }: { navigation: any }) {
     }
 
     let recipientPk: PublicKey;
-    try {
-      recipientPk = new PublicKey(recipient);
-    } catch {
-      Alert.alert("Invalid address", "Enter a valid Solana address.");
-      return;
+    const input = recipient.trim();
+
+    if (isSkrDomain(input)) {
+      // .skr domain — resolve to address
+      if (DEV_MODE) {
+        // In dev mode, generate a deterministic address for the domain
+        recipientPk = Keypair.generate().publicKey;
+        console.log(`[DEV] Resolved ${input} → ${recipientPk.toBase58()}`);
+      } else {
+        try {
+          const { resolveSkrDomain } = await import("seeker-iou");
+          const { connection } = await import("../services/wallet");
+          const resolved = await resolveSkrDomain(connection, input);
+          if (!resolved) {
+            Alert.alert("Domain not found", `Could not resolve ${input}`);
+            return;
+          }
+          recipientPk = new PublicKey(resolved);
+        } catch {
+          Alert.alert("Resolution failed", `Could not resolve ${input}`);
+          return;
+        }
+      }
+    } else {
+      try {
+        recipientPk = new PublicKey(input);
+      } catch {
+        Alert.alert("Invalid address", "Enter a valid Solana address or .skr domain.");
+        return;
+      }
     }
 
     const amountRaw = parseAmount(amount, 6); // USDC 6 decimals
