@@ -36,6 +36,7 @@ interface AppState {
   pendingIOUs: number;
   nfcReady: boolean;
   loading: boolean;
+  connectError: string | null;
   connect: () => Promise<void>;
   disconnectWallet: () => void;
   refreshState: () => void;
@@ -81,8 +82,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     init();
   }, []);
 
+  const [connectError, setConnectError] = useState<string | null>(null);
+
   const connect = useCallback(async () => {
     setLoading(true);
+    setConnectError(null);
     try {
       const pubkey = await connectWallet();
       setWallet(pubkey);
@@ -103,11 +107,20 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         saveVaultState(mockState);
         setVaultState(mockState);
 
-        // Save config
         const { saveSgtMint, saveTokenMint } = await import("../services/storage");
         saveSgtMint(Keypair.generate().publicKey.toBase58());
         saveTokenMint(tokenMint.toBase58());
         console.log("[DEV] Seeded mock vault with 100 USDC");
+      }
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.error("Connect failed:", msg);
+      if (msg.includes("TurboModule") || msg.includes("SolanaMobileWalletAdapter")) {
+        setConnectError(
+          "Seed Vault not available. You're running in Expo Go which doesn't support native modules.\n\nEnable Dev Mode to test, or create a dev build with:\nnpx expo run:android"
+        );
+      } else {
+        setConnectError(msg);
       }
     } finally {
       setLoading(false);
@@ -150,6 +163,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     pendingIOUs,
     nfcReady,
     loading,
+    connectError,
     connect,
     disconnectWallet,
     refreshState,

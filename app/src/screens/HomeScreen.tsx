@@ -6,7 +6,7 @@ import { isDevMode, setDevMode } from "../services/devMode";
 export function HomeScreen({ navigation }: { navigation: any }) {
   const {
     connected, wallet, availableBalance, bondAmount, totalDeposited,
-    pendingIOUs, nfcReady, loading, connect,
+    pendingIOUs, nfcReady, loading, connect, connectError,
   } = useApp();
 
   if (loading) {
@@ -45,6 +45,12 @@ export function HomeScreen({ navigation }: { navigation: any }) {
             {devToggle ? "Dev Mode — mock wallet & NFC" : "Production — Seed Vault & NFC hardware"}
           </Text>
         </View>
+
+        {connectError && (
+          <View style={styles.errorCard}>
+            <Text style={styles.errorText}>{connectError}</Text>
+          </View>
+        )}
       </View>
     );
   }
@@ -129,5 +135,7 @@ const styles = StyleSheet.create({
   connectButtonText: { color: "#fff", fontSize: 16, fontWeight: "700" },
   devToggleRow: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 24 },
   devToggleLabel: { color: "#888", fontSize: 13, flex: 1 },
+  errorCard: { backgroundColor: "#dc262615", borderRadius: 12, padding: 16, marginTop: 20, marginHorizontal: 12 },
+  errorText: { color: "#f87171", fontSize: 13, lineHeight: 20 },
   badge: { position: "absolute", top: 8, right: 8, width: 8, height: 8, borderRadius: 4, backgroundColor: "#dc2626" },
 });
