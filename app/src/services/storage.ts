@@ -27,25 +27,31 @@ function getStore(): KVStore {
   if (store && storeIsDevMode === currentDev) return store;
 
   storeIsDevMode = currentDev;
-  if (currentDev) {
-    // In-memory fallback for simulator
-    const mem = new Map<string, string>();
-    store = {
-      getString: (k) => mem.get(k),
-      set: (k, v) => mem.set(k, v),
-      clearAll: () => mem.clear(),
-    };
-    console.log("[DEV] Using in-memory storage");
-  } else {
-    // MMKV on device
-    const { MMKV } = require("react-native-mmkv");
-    const mmkv = new MMKV({ id: "seeker-iou-storage" });
-    store = {
-      getString: (k: string) => mmkv.getString(k),
-      set: (k: string, v: string) => mmkv.set(k, v),
-      clearAll: () => mmkv.clearAll(),
-    };
+
+  // Try MMKV first (works on device), fall back to in-memory (Expo Go / simulator)
+  if (!currentDev) {
+    try {
+      const { MMKV } = require("react-native-mmkv");
+      const mmkv = new MMKV({ id: "seeker-iou-storage" });
+      store = {
+        getString: (k: string) => mmkv.getString(k),
+        set: (k: string, v: string) => mmkv.set(k, v),
+        clearAll: () => mmkv.clearAll(),
+      };
+      return store;
+    } catch (err) {
+      console.warn("MMKV not available, falling back to in-memory storage:", err);
+    }
   }
+
+  // In-memory fallback
+  const mem = new Map<string, string>();
+  store = {
+    getString: (k) => mem.get(k),
+    set: (k, v) => mem.set(k, v),
+    clearAll: () => mem.clear(),
+  };
+  console.log("[DEV/FALLBACK] Using in-memory storage");
   return store;
 }
 
