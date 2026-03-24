@@ -64,9 +64,14 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const saved = loadVaultState();
       if (saved) setVaultState(saved);
 
-      // Init NFC
-      const nfc = await initNFC();
-      setNfcReady(nfc);
+      // Init NFC (may fail in Expo Go — native module not available)
+      try {
+        const nfc = await initNFC();
+        setNfcReady(nfc);
+      } catch (err) {
+        console.warn("NFC init failed (expected in Expo Go):", err);
+        setNfcReady(false);
+      }
 
       // Count pending IOUs
       setPendingIOUs(getPendingIOUCount());

@@ -71,10 +71,15 @@ export async function initNFC(): Promise<boolean> {
     return true;
   }
 
-  const NfcManager = (await import("react-native-nfc-manager")).default;
-  const supported = await NfcManager.isSupported();
-  if (supported) await NfcManager.start();
-  return supported;
+  try {
+    const NfcManager = (await import("react-native-nfc-manager")).default;
+    const supported = await NfcManager.isSupported();
+    if (supported) await NfcManager.start();
+    return supported;
+  } catch (err) {
+    console.warn("NFC not available:", err);
+    return false;
+  }
 }
 
 /**
