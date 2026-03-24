@@ -4,7 +4,7 @@ import {
   type LocalVaultState,
   type ReceivedIOU,
 } from "seeker-iou";
-import { DEV_MODE } from "./devMode";
+import { isDevMode } from "./devMode";
 
 // Storage backend: MMKV on device, Map in dev/simulator
 interface KVStore {
@@ -13,12 +13,21 @@ interface KVStore {
   clearAll(): void;
 }
 
-let store: KVStore;
+let store: KVStore | null = null;
+let storeIsDevMode: boolean | null = null;
+
+/** Reset store when dev mode toggles */
+export function resetStore(): void {
+  store = null;
+  storeIsDevMode = null;
+}
 
 function getStore(): KVStore {
-  if (store) return store;
+  const currentDev = isDevMode();
+  if (store && storeIsDevMode === currentDev) return store;
 
-  if (DEV_MODE) {
+  storeIsDevMode = currentDev;
+  if (currentDev) {
     // In-memory fallback for simulator
     const mem = new Map<string, string>();
     store = {

@@ -9,7 +9,7 @@ import {
 import { Keypair, PublicKey } from "@solana/web3.js";
 import nacl from "tweetnacl";
 import type { IOUParams } from "seeker-iou";
-import { DEV_MODE, mockDelay } from "./devMode";
+import { isDevMode, mockDelay } from "./devMode";
 
 export interface NFCReceiveResult {
   success: boolean;
@@ -33,7 +33,7 @@ export function devSimulateIncomingIOU(params?: {
   recipientPubkey?: PublicKey;
   amount?: bigint;
 }): void {
-  if (!DEV_MODE) return;
+  if (!isDevMode()) return;
 
   const sender = params?.senderKeypair || Keypair.generate();
   const recipient = params?.recipientPubkey || Keypair.generate().publicKey;
@@ -66,7 +66,7 @@ export function devSimulateIncomingIOU(params?: {
  * PROD: checks hardware NFC support.
  */
 export async function initNFC(): Promise<boolean> {
-  if (DEV_MODE) {
+  if (isDevMode()) {
     console.log("[DEV] NFC initialized (mock)");
     return true;
   }
@@ -86,7 +86,7 @@ export async function sendIOUViaNFC(
   message: Uint8Array,
   signature: Uint8Array
 ): Promise<{ success: boolean; error?: string }> {
-  if (DEV_MODE) {
+  if (isDevMode()) {
     await mockDelay(1000);
     devNFCBuffer = { message, signature };
     console.log("[DEV] IOU sent via mock NFC");
@@ -116,7 +116,7 @@ export async function sendIOUViaNFC(
  * PROD: blocks until NFC tag detected, reads NDEF.
  */
 export async function receiveIOUViaNFC(): Promise<NFCReceiveResult> {
-  if (DEV_MODE) {
+  if (isDevMode()) {
     // Simulate waiting for a tap
     await mockDelay(2000);
 
@@ -172,7 +172,7 @@ export async function receiveIOUViaNFC(): Promise<NFCReceiveResult> {
 }
 
 export async function cancelNFC(): Promise<void> {
-  if (DEV_MODE) return;
+  if (isDevMode()) return;
   try {
     const NfcManager = (await import("react-native-nfc-manager")).default;
     await NfcManager.cancelTechnologyRequest();

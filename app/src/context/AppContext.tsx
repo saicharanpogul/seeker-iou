@@ -22,7 +22,7 @@ import {
 } from "../services/storage";
 import { initNFC } from "../services/nfc";
 import { getPendingIOUCount } from "../services/payment";
-import { DEV_MODE } from "../services/devMode";
+import { isDevMode } from "../services/devMode";
 import { deriveVaultPda } from "seeker-iou";
 import { Keypair } from "@solana/web3.js";
 
@@ -84,7 +84,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       saveWalletPubkey(pubkey.toBase58());
 
       // In dev mode, seed a mock vault with 100 USDC if none exists
-      if (DEV_MODE && !loadVaultState()) {
+      if (isDevMode() && !loadVaultState()) {
         const tokenMint = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
         const [vaultPda] = deriveVaultPda(pubkey, tokenMint);
         const mockState: LocalVaultState = {

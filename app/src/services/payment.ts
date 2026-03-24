@@ -12,7 +12,7 @@ import {
 } from "seeker-iou";
 import { connection, signMessage, signAndSendTransaction, getPublicKey } from "./wallet";
 import { sendIOUViaNFC, receiveIOUViaNFC } from "./nfc";
-import { DEV_MODE, mockDelay } from "./devMode";
+import { isDevMode, mockDelay } from "./devMode";
 import {
   saveVaultState,
   loadVaultState,
@@ -110,7 +110,7 @@ export async function receivePayment(): Promise<{
 
   // Resolve .skr domain for human-readable display
   let senderDisplay: string;
-  if (DEV_MODE) {
+  if (isDevMode()) {
     senderDisplay = "dev-sender.skr";
   } else {
     try {
@@ -163,7 +163,7 @@ export async function settleAllIOUs(): Promise<{
 
   for (const iou of receivedIOUs) {
     try {
-      if (DEV_MODE) {
+      if (isDevMode()) {
         // Simulate settlement
         await mockDelay(800);
         const fakeSig = `dev_settle_${iou.nonce}_${Date.now()}`;

@@ -6,6 +6,7 @@ import { PayScreen } from "../screens/PayScreen";
 import { ReceiveScreen } from "../screens/ReceiveScreen";
 import { SettleScreen } from "../screens/SettleScreen";
 import { VaultScreen } from "../screens/VaultScreen";
+import { SettingsScreen } from "../screens/SettingsScreen";
 
 const Stack = createNativeStackNavigator();
 
@@ -23,6 +24,7 @@ export function AppNavigator() {
         <Stack.Screen name="Receive" component={ReceiveScreen} />
         <Stack.Screen name="Settle" component={SettleScreen} />
         <Stack.Screen name="Vault" component={VaultScreen} />
+        <Stack.Screen name="Settings" component={SettingsScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );

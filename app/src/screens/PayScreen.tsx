@@ -4,7 +4,7 @@ import { PublicKey, Keypair } from "@solana/web3.js";
 import { parseAmount, formatAmount, isSkrDomain } from "seeker-iou";
 import { sendPayment } from "../services/payment";
 import { useApp } from "../context/AppContext";
-import { DEV_MODE } from "../services/devMode";
+import { isDevMode } from "../services/devMode";
 
 export function PayScreen({ navigation }: { navigation: any }) {
   const { refreshState } = useApp();
@@ -25,7 +25,7 @@ export function PayScreen({ navigation }: { navigation: any }) {
 
     if (isSkrDomain(input)) {
       // .skr domain — resolve to address
-      if (DEV_MODE) {
+      if (isDevMode()) {
         // In dev mode, generate a deterministic address for the domain
         recipientPk = Keypair.generate().publicKey;
         console.log(`[DEV] Resolved ${input} → ${recipientPk.toBase58()}`);

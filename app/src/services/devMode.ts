@@ -1,12 +1,22 @@
 /**
- * Dev mode configuration.
- * When enabled, mocks wallet (Seed Vault), NFC, and on-chain operations
- * so the full payment flow works in a simulator without hardware.
+ * Dev mode — manually toggled via the Settings screen.
+ * When ON: mocks wallet, NFC, settlement, storage.
+ * When OFF: uses real Seed Vault, NFC hardware, on-chain transactions.
+ *
+ * Default: OFF. Toggle from Settings screen.
  */
 
-export const DEV_MODE = __DEV__ ?? true;
+let _devMode = false;
 
-// Simulated delay for mock operations (ms)
+export function isDevMode(): boolean {
+  return _devMode;
+}
+
+export function setDevMode(on: boolean): void {
+  _devMode = on;
+  console.log(`[DEV MODE] ${on ? "ENABLED" : "DISABLED"}`);
+}
+
 export const MOCK_DELAY = 800;
 
 export function mockDelay(ms: number = MOCK_DELAY): Promise<void> {

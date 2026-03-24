@@ -1,6 +1,6 @@
 import { Connection, PublicKey, Transaction, Keypair } from "@solana/web3.js";
 import nacl from "tweetnacl";
-import { DEV_MODE, mockDelay } from "./devMode";
+import { isDevMode, mockDelay } from "./devMode";
 
 const RPC_URL = "https://api.devnet.solana.com";
 
@@ -28,7 +28,7 @@ export function getPublicKey(): PublicKey | null {
  * PROD: Solana Mobile Wallet Adapter → Seed Vault.
  */
 export async function connectWallet(): Promise<PublicKey> {
-  if (DEV_MODE) {
+  if (isDevMode()) {
     await mockDelay();
     const kp = getDevKeypair();
     cachedPublicKey = kp.publicKey;
@@ -56,7 +56,7 @@ export async function connectWallet(): Promise<PublicKey> {
  * PROD: routes through Seed Vault hardware signing.
  */
 export async function signMessage(message: Uint8Array): Promise<Uint8Array> {
-  if (DEV_MODE) {
+  if (isDevMode()) {
     await mockDelay(400);
     const kp = getDevKeypair();
     const signature = nacl.sign.detached(message, kp.secretKey);
@@ -85,7 +85,7 @@ export async function signMessage(message: Uint8Array): Promise<Uint8Array> {
 export async function signAndSendTransaction(
   transaction: Transaction
 ): Promise<string> {
-  if (DEV_MODE) {
+  if (isDevMode()) {
     await mockDelay(1200);
     // Generate a fake signature
     const fakeSig = Buffer.from(nacl.randomBytes(64)).toString("base64").slice(0, 88);

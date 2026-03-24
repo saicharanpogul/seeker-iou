@@ -31,7 +31,12 @@ export function HomeScreen({ navigation }: { navigation: any }) {
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.title}>seeker-iou</Text>
+        <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center" }}>
+          <Text style={styles.title}>seeker-iou</Text>
+          <TouchableOpacity onPress={() => navigation.navigate("Settings")} style={styles.settingsBtn}>
+            <Text style={styles.settingsIcon}>Settings</Text>
+          </TouchableOpacity>
+        </View>
         <View style={styles.statusRow}>
           {nfcReady && <Text style={styles.nfcBadge}>NFC</Text>}
           <Text style={styles.walletAddr}>
@@ -82,6 +87,8 @@ const styles = StyleSheet.create({
   statusRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8 },
   nfcBadge: { fontSize: 11, color: "#059669", backgroundColor: "#05966920", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, overflow: "hidden" },
   walletAddr: { fontSize: 12, color: "#666", fontFamily: "monospace" },
+  settingsBtn: { paddingVertical: 4, paddingHorizontal: 12, backgroundColor: "#1a1a1a", borderRadius: 8, borderWidth: 1, borderColor: "#333" },
+  settingsIcon: { color: "#888", fontSize: 13 },
   balanceCard: { backgroundColor: "#1a1a1a", borderRadius: 16, padding: 24, marginBottom: 32 },
   balanceLabel: { fontSize: 11, color: "#888", letterSpacing: 1.5 },
   balanceAmount: { fontSize: 36, fontWeight: "700", color: "#fff", marginTop: 8 },

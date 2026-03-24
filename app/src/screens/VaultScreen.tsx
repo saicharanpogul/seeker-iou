@@ -1,7 +1,7 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert } from "react-native";
 import { useApp } from "../context/AppContext";
-import { DEV_MODE, mockDelay } from "../services/devMode";
+import { isDevMode, mockDelay } from "../services/devMode";
 
 export function VaultScreen({ navigation }: { navigation: any }) {
   const { vaultState, availableBalance, bondAmount, totalDeposited, refreshState } = useApp();
@@ -16,7 +16,7 @@ export function VaultScreen({ navigation }: { navigation: any }) {
 
     setDepositing(true);
     try {
-      if (DEV_MODE) {
+      if (isDevMode()) {
         await mockDelay(1000);
         // In dev mode, just update local state
         if (vaultState) {
