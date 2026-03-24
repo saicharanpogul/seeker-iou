@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "seeker-iou",
+    "slug": "seeker-iou",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "scheme": "seeker-iou",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "android": {
+      "package": "com.seekeriou.app",
+      "adaptiveIcon": {
+        "backgroundColor": "#0a0a0a"
+      },
+      "permissions": ["android.permission.NFC"]
+    },
+    "plugins": [
+      [
+        "react-native-nfc-manager",
+        {
+          "nfcPermission": "NFC is required for offline payments"
+        }
+      ]
+    ]
+  }
+}

@@ -1,0 +1,134 @@
+import React, { createContext, useContext, useState, useEffect, useCallback } from "react";
+import { PublicKey } from "@solana/web3.js";
+import {
+  getLocalAvailableBalance,
+  calculateBondAmount,
+  formatAmount,
+  type LocalVaultState,
+} from "seeker-iou";
+import {
+  connectWallet,
+  disconnect,
+  getPublicKey,
+  connection,
+} from "../services/wallet";
+import {
+  loadVaultState,
+  saveVaultState,
+  loadWalletPubkey,
+  saveWalletPubkey,
+  loadSgtMint,
+  loadTokenMint,
+} from "../services/storage";
+import { initNFC } from "../services/nfc";
+import { getPendingIOUCount } from "../services/payment";
+
+interface AppState {
+  wallet: PublicKey | null;
+  connected: boolean;
+  vaultState: LocalVaultState | null;
+  availableBalance: string;
+  bondAmount: string;
+  totalDeposited: string;
+  pendingIOUs: number;
+  nfcReady: boolean;
+  loading: boolean;
+  connect: () => Promise<void>;
+  disconnectWallet: () => void;
+  refreshState: () => void;
+  updateVaultState: (state: LocalVaultState) => void;
+}
+
+const AppContext = createContext<AppState>({} as AppState);
+
+export function AppProvider({ children }: { children: React.ReactNode }) {
+  const [wallet, setWallet] = useState<PublicKey | null>(null);
+  const [vaultState, setVaultState] = useState<LocalVaultState | null>(null);
+  const [pendingIOUs, setPendingIOUs] = useState(0);
+  const [nfcReady, setNfcReady] = useState(false);
+  const [loading, setLoading] = useState(true);
+
+  // Initialize on mount
+  useEffect(() => {
+    const init = async () => {
+      // Restore wallet
+      const savedPubkey = loadWalletPubkey();
+      if (savedPubkey) {
+        setWallet(new PublicKey(savedPubkey));
+      }
+
+      // Restore vault state
+      const saved = loadVaultState();
+      if (saved) setVaultState(saved);
+
+      // Init NFC
+      const nfc = await initNFC();
+      setNfcReady(nfc);
+
+      // Count pending IOUs
+      setPendingIOUs(getPendingIOUCount());
+
+      setLoading(false);
+    };
+    init();
+  }, []);
+
+  const connect = useCallback(async () => {
+    setLoading(true);
+    try {
+      const pubkey = await connectWallet();
+      setWallet(pubkey);
+      saveWalletPubkey(pubkey.toBase58());
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const disconnectWallet = useCallback(() => {
+    disconnect();
+    setWallet(null);
+  }, []);
+
+  const refreshState = useCallback(() => {
+    const saved = loadVaultState();
+    if (saved) setVaultState(saved);
+    setPendingIOUs(getPendingIOUCount());
+  }, []);
+
+  const updateVaultState = useCallback((state: LocalVaultState) => {
+    setVaultState(state);
+    saveVaultState(state);
+  }, []);
+
+  // Derived values
+  const decimals = 6; // USDC
+  const remaining = vaultState
+    ? vaultState.depositedAmount - vaultState.spentAmount
+    : 0n;
+  const available = vaultState ? getLocalAvailableBalance(vaultState) : 0n;
+  const bond = remaining > 0n ? calculateBondAmount(remaining, 3000) : 0n;
+
+  const value: AppState = {
+    wallet,
+    connected: wallet !== null,
+    vaultState,
+    availableBalance: formatAmount(available, decimals),
+    bondAmount: formatAmount(bond, decimals),
+    totalDeposited: vaultState
+      ? formatAmount(vaultState.depositedAmount, decimals)
+      : "0",
+    pendingIOUs,
+    nfcReady,
+    loading,
+    connect,
+    disconnectWallet,
+    refreshState,
+    updateVaultState,
+  };
+
+  return <AppContext.Provider value={value}>{children}</AppContext.Provider>;
+}
+
+export function useApp(): AppState {
+  return useContext(AppContext);
+}
