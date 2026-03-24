@@ -24,10 +24,7 @@
         {
           "android": {
             "minSdkVersion": 26,
-            "targetSdkVersion": 34,
-            "compileSdkVersion": 34,
-            "newArchEnabled": true,
-            "kotlinVersion": "1.9.25"
+            "newArchEnabled": true
           }
         }
       ],
