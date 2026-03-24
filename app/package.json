@@ -11,7 +11,7 @@
     "@coral-xyz/anchor": "^0.31.1",
     "@solana-mobile/mobile-wallet-adapter-protocol": "^2.0.0",
     "@solana-mobile/mobile-wallet-adapter-protocol-web3js": "^2.0.0",
-    "@solana-mobile/seed-vault-lib": "^0.7.0",
+    "@solana-mobile/seed-vault-lib": "^0.4.0",
     "@solana/web3.js": "^1.95.0",
     "expo": "~52.0.0",
     "react": "18.3.1",
