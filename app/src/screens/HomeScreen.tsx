@@ -1,6 +1,7 @@
 import React from "react";
 import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from "react-native";
 import { useApp } from "../context/AppContext";
+import { isDevMode } from "../services/devMode";
 
 export function HomeScreen({ navigation }: { navigation: any }) {
   const {
@@ -38,9 +39,10 @@ export function HomeScreen({ navigation }: { navigation: any }) {
           </TouchableOpacity>
         </View>
         <View style={styles.statusRow}>
+          {isDevMode() && <Text style={styles.devBadge}>DEV</Text>}
           {nfcReady && <Text style={styles.nfcBadge}>NFC</Text>}
           <Text style={styles.walletAddr}>
-            {wallet!.toBase58().slice(0, 4)}...{wallet!.toBase58().slice(-4)}
+            {isDevMode() ? "Dev Wallet" : "Seed Vault"} {wallet!.toBase58().slice(0, 4)}...{wallet!.toBase58().slice(-4)}
           </Text>
         </View>
       </View>
@@ -85,6 +87,7 @@ const styles = StyleSheet.create({
   title: { fontSize: 28, fontWeight: "700", color: "#fff" },
   subtitle: { fontSize: 14, color: "#888", marginTop: 4, marginBottom: 32 },
   statusRow: { flexDirection: "row", alignItems: "center", gap: 8, marginTop: 8 },
+  devBadge: { fontSize: 11, color: "#d97706", backgroundColor: "#d9770620", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, overflow: "hidden" },
   nfcBadge: { fontSize: 11, color: "#059669", backgroundColor: "#05966920", paddingHorizontal: 8, paddingVertical: 2, borderRadius: 4, overflow: "hidden" },
   walletAddr: { fontSize: 12, color: "#666", fontFamily: "monospace" },
   settingsBtn: { paddingVertical: 4, paddingHorizontal: 12, backgroundColor: "#1a1a1a", borderRadius: 8, borderWidth: 1, borderColor: "#333" },
