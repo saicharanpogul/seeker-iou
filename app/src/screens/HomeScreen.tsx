@@ -1,7 +1,7 @@
-import React from "react";
-import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator } from "react-native";
+import React, { useState } from "react";
+import { View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, Switch } from "react-native";
 import { useApp } from "../context/AppContext";
-import { isDevMode } from "../services/devMode";
+import { isDevMode, setDevMode } from "../services/devMode";
 
 export function HomeScreen({ navigation }: { navigation: any }) {
   const {
@@ -17,14 +17,34 @@ export function HomeScreen({ navigation }: { navigation: any }) {
     );
   }
 
+  const [devToggle, setDevToggle] = useState(isDevMode());
+
   if (!connected) {
     return (
       <View style={[styles.container, styles.center]}>
         <Text style={styles.title}>seeker-iou</Text>
         <Text style={styles.subtitle}>Offline payments for Seeker</Text>
+
         <TouchableOpacity style={styles.connectButton} onPress={connect}>
-          <Text style={styles.connectButtonText}>Connect Wallet</Text>
+          <Text style={styles.connectButtonText}>
+            {devToggle ? "Connect (Dev Mode)" : "Connect with Seed Vault"}
+          </Text>
         </TouchableOpacity>
+
+        <View style={styles.devToggleRow}>
+          <Switch
+            value={devToggle}
+            onValueChange={(v) => {
+              setDevToggle(v);
+              setDevMode(v);
+            }}
+            trackColor={{ false: "#333", true: "#7c3aed" }}
+            thumbColor="#fff"
+          />
+          <Text style={styles.devToggleLabel}>
+            {devToggle ? "Dev Mode — mock wallet & NFC" : "Production — Seed Vault & NFC hardware"}
+          </Text>
+        </View>
       </View>
     );
   }
@@ -106,6 +126,8 @@ const styles = StyleSheet.create({
   btnHint: { color: "#ffffff80", fontSize: 12, marginTop: 2 },
   secBtnText: { color: "#ccc", fontSize: 14, fontWeight: "500" },
   connectButton: { backgroundColor: "#7c3aed", paddingVertical: 16, paddingHorizontal: 48, borderRadius: 14 },
-  connectButtonText: { color: "#fff", fontSize: 18, fontWeight: "700" },
+  connectButtonText: { color: "#fff", fontSize: 16, fontWeight: "700" },
+  devToggleRow: { flexDirection: "row", alignItems: "center", gap: 12, marginTop: 24 },
+  devToggleLabel: { color: "#888", fontSize: 13, flex: 1 },
   badge: { position: "absolute", top: 8, right: 8, width: 8, height: 8, borderRadius: 4, backgroundColor: "#dc2626" },
 });

@@ -1,6 +1,6 @@
 import React, { useState } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, Switch, Alert } from "react-native";
-import { isDevMode, setDevMode, isAutoDetected } from "../services/devMode";
+import { isDevMode, setDevMode } from "../services/devMode";
 import { resetStore, clearAll } from "../services/storage";
 import { useApp } from "../context/AppContext";
 
@@ -46,11 +46,9 @@ export function SettingsScreen({ navigation }: { navigation: any }) {
       <View style={styles.section}>
         <View style={styles.row}>
           <View style={{ flex: 1 }}>
-            <Text style={styles.rowTitle}>Dev Mode {isAutoDetected() ? "(auto)" : ""}</Text>
+            <Text style={styles.rowTitle}>Dev Mode</Text>
             <Text style={styles.rowDesc}>
-              {isAutoDetected()
-                ? "Auto-enabled: Solana Mobile native modules not detected (Expo Go)"
-                : "Mock wallet, NFC, and settlement for testing without Seeker hardware"}
+              Mock wallet, NFC, and settlement for testing without Seeker hardware
             </Text>
           </View>
           <Switch
