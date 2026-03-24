@@ -5,7 +5,7 @@ import { isDevMode, setDevMode } from "../services/devMode";
 
 export function HomeScreen({ navigation }: { navigation: any }) {
   const {
-    connected, wallet, availableBalance, bondAmount, totalDeposited,
+    connected, wallet, walletDisplay, availableBalance, bondAmount, totalDeposited,
     pendingIOUs, nfcReady, loading, connect, connectError,
   } = useApp();
 
@@ -68,7 +68,7 @@ export function HomeScreen({ navigation }: { navigation: any }) {
           {isDevMode() && <Text style={styles.devBadge}>DEV</Text>}
           {nfcReady && <Text style={styles.nfcBadge}>NFC</Text>}
           <Text style={styles.walletAddr}>
-            {isDevMode() ? "Dev Wallet" : "Seed Vault"} {wallet!.toBase58().slice(0, 4)}...{wallet!.toBase58().slice(-4)}
+            {walletDisplay || wallet!.toBase58().slice(0, 4) + "..." + wallet!.toBase58().slice(-4)}
           </Text>
         </View>
       </View>

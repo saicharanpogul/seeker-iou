@@ -23,11 +23,12 @@ import {
 import { initNFC } from "../services/nfc";
 import { getPendingIOUCount } from "../services/payment";
 import { isDevMode } from "../services/devMode";
-import { deriveVaultPda } from "seeker-iou";
+import { deriveVaultPda, reverseResolveSkr } from "seeker-iou";
 import { Keypair } from "@solana/web3.js";
 
 interface AppState {
   wallet: PublicKey | null;
+  walletDisplay: string;
   connected: boolean;
   vaultState: LocalVaultState | null;
   availableBalance: string;
@@ -47,6 +48,7 @@ const AppContext = createContext<AppState>({} as AppState);
 
 export function AppProvider({ children }: { children: React.ReactNode }) {
   const [wallet, setWallet] = useState<PublicKey | null>(null);
+  const [walletDisplay, setWalletDisplay] = useState("");
   const [vaultState, setVaultState] = useState<LocalVaultState | null>(null);
   const [pendingIOUs, setPendingIOUs] = useState(0);
   const [nfcReady, setNfcReady] = useState(false);
@@ -58,7 +60,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       // Restore wallet
       const savedPubkey = loadWalletPubkey();
       if (savedPubkey) {
-        setWallet(new PublicKey(savedPubkey));
+        const pk = new PublicKey(savedPubkey);
+        setWallet(pk);
+        const shortAddr = savedPubkey.slice(0, 4) + "..." + savedPubkey.slice(-4);
+        try {
+          const domain = await reverseResolveSkr(connection, pk);
+          setWalletDisplay(domain || shortAddr);
+        } catch {
+          setWalletDisplay(shortAddr);
+        }
       }
 
       // Restore vault state
@@ -91,6 +101,15 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const pubkey = await connectWallet();
       setWallet(pubkey);
       saveWalletPubkey(pubkey.toBase58());
+
+      // Resolve .skr domain for display
+      const shortAddr = pubkey.toBase58().slice(0, 4) + "..." + pubkey.toBase58().slice(-4);
+      try {
+        const domain = await reverseResolveSkr(connection, pubkey);
+        setWalletDisplay(domain || shortAddr);
+      } catch {
+        setWalletDisplay(shortAddr);
+      }
 
       // In dev mode, seed a mock vault with 100 USDC if none exists
       if (isDevMode() && !loadVaultState()) {
@@ -153,6 +172,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const value: AppState = {
     wallet,
+    walletDisplay,
     connected: wallet !== null,
     vaultState,
     availableBalance: formatAmount(available, decimals),
