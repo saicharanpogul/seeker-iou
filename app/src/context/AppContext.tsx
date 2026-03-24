@@ -22,6 +22,9 @@ import {
 } from "../services/storage";
 import { initNFC } from "../services/nfc";
 import { getPendingIOUCount } from "../services/payment";
+import { DEV_MODE } from "../services/devMode";
+import { deriveVaultPda } from "seeker-iou";
+import { Keypair } from "@solana/web3.js";
 
 interface AppState {
   wallet: PublicKey | null;
@@ -79,6 +82,28 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       const pubkey = await connectWallet();
       setWallet(pubkey);
       saveWalletPubkey(pubkey.toBase58());
+
+      // In dev mode, seed a mock vault with 100 USDC if none exists
+      if (DEV_MODE && !loadVaultState()) {
+        const tokenMint = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
+        const [vaultPda] = deriveVaultPda(pubkey, tokenMint);
+        const mockState: LocalVaultState = {
+          vaultAddress: vaultPda.toBase58(),
+          tokenMint: tokenMint.toBase58(),
+          depositedAmount: 100_000_000n, // 100 USDC
+          spentAmount: 0n,
+          currentNonce: 0,
+          pendingIOUs: [],
+        };
+        saveVaultState(mockState);
+        setVaultState(mockState);
+
+        // Save config
+        const { saveSgtMint, saveTokenMint } = await import("../services/storage");
+        saveSgtMint(Keypair.generate().publicKey.toBase58());
+        saveTokenMint(tokenMint.toBase58());
+        console.log("[DEV] Seeded mock vault with 100 USDC");
+      }
     } finally {
       setLoading(false);
     }

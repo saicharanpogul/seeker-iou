@@ -1,12 +1,44 @@
-import { MMKV } from "react-native-mmkv";
 import {
   serializeLocalState,
   deserializeLocalState,
   type LocalVaultState,
   type ReceivedIOU,
 } from "seeker-iou";
+import { DEV_MODE } from "./devMode";
 
-const storage = new MMKV({ id: "seeker-iou-storage" });
+// Storage backend: MMKV on device, Map in dev/simulator
+interface KVStore {
+  getString(key: string): string | undefined;
+  set(key: string, value: string): void;
+  clearAll(): void;
+}
+
+let store: KVStore;
+
+function getStore(): KVStore {
+  if (store) return store;
+
+  if (DEV_MODE) {
+    // In-memory fallback for simulator
+    const mem = new Map<string, string>();
+    store = {
+      getString: (k) => mem.get(k),
+      set: (k, v) => mem.set(k, v),
+      clearAll: () => mem.clear(),
+    };
+    console.log("[DEV] Using in-memory storage");
+  } else {
+    // MMKV on device
+    const { MMKV } = require("react-native-mmkv");
+    const mmkv = new MMKV({ id: "seeker-iou-storage" });
+    store = {
+      getString: (k: string) => mmkv.getString(k),
+      set: (k: string, v: string) => mmkv.set(k, v),
+      clearAll: () => mmkv.clearAll(),
+    };
+  }
+  return store;
+}
 
 const KEYS = {
   VAULT_STATE: "vault_state",
@@ -20,11 +52,11 @@ const KEYS = {
 
 export function saveVaultState(state: LocalVaultState): void {
   const bytes = serializeLocalState(state);
-  storage.set(KEYS.VAULT_STATE, Buffer.from(bytes).toString("base64"));
+  getStore().set(KEYS.VAULT_STATE, Buffer.from(bytes).toString("base64"));
 }
 
 export function loadVaultState(): LocalVaultState | null {
-  const encoded = storage.getString(KEYS.VAULT_STATE);
+  const encoded = getStore().getString(KEYS.VAULT_STATE);
   if (!encoded) return null;
   try {
     const bytes = new Uint8Array(Buffer.from(encoded, "base64"));
@@ -36,31 +68,32 @@ export function loadVaultState(): LocalVaultState | null {
 
 // --- Received IOUs ---
 
-export function saveReceivedIOUs(ious: ReceivedIOU[]): void {
-  const json = JSON.stringify(ious, (_, value) => {
+function serializeIOUs(ious: ReceivedIOU[]): string {
+  return JSON.stringify(ious, (_, value) => {
     if (typeof value === "bigint") return { __bigint: value.toString() };
-    if (value instanceof Uint8Array)
-      return { __uint8array: Array.from(value) };
+    if (value instanceof Uint8Array) return { __uint8array: Array.from(value) };
     return value;
   });
-  storage.set(KEYS.RECEIVED_IOUS, json);
+}
+
+function deserializeIOUs(json: string): ReceivedIOU[] {
+  return JSON.parse(json, (_, value) => {
+    if (value && typeof value === "object") {
+      if ("__bigint" in value) return BigInt(value.__bigint);
+      if ("__uint8array" in value) return new Uint8Array(value.__uint8array);
+    }
+    return value;
+  });
+}
+
+export function saveReceivedIOUs(ious: ReceivedIOU[]): void {
+  getStore().set(KEYS.RECEIVED_IOUS, serializeIOUs(ious));
 }
 
 export function loadReceivedIOUs(): ReceivedIOU[] {
-  const json = storage.getString(KEYS.RECEIVED_IOUS);
+  const json = getStore().getString(KEYS.RECEIVED_IOUS);
   if (!json) return [];
-  try {
-    return JSON.parse(json, (_, value) => {
-      if (value && typeof value === "object") {
-        if ("__bigint" in value) return BigInt(value.__bigint);
-        if ("__uint8array" in value)
-          return new Uint8Array(value.__uint8array);
-      }
-      return value;
-    });
-  } catch {
-    return [];
-  }
+  try { return deserializeIOUs(json); } catch { return []; }
 }
 
 export function addReceivedIOU(iou: ReceivedIOU): void {
@@ -82,29 +115,29 @@ export function markIOUSettled(nonce: number, txSig: string): void {
 // --- Config ---
 
 export function saveWalletPubkey(pubkey: string): void {
-  storage.set(KEYS.WALLET_PUBKEY, pubkey);
+  getStore().set(KEYS.WALLET_PUBKEY, pubkey);
 }
 
 export function loadWalletPubkey(): string | null {
-  return storage.getString(KEYS.WALLET_PUBKEY) ?? null;
+  return getStore().getString(KEYS.WALLET_PUBKEY) ?? null;
 }
 
 export function saveSgtMint(mint: string): void {
-  storage.set(KEYS.SGT_MINT, mint);
+  getStore().set(KEYS.SGT_MINT, mint);
 }
 
 export function loadSgtMint(): string | null {
-  return storage.getString(KEYS.SGT_MINT) ?? null;
+  return getStore().getString(KEYS.SGT_MINT) ?? null;
 }
 
 export function saveTokenMint(mint: string): void {
-  storage.set(KEYS.TOKEN_MINT, mint);
+  getStore().set(KEYS.TOKEN_MINT, mint);
 }
 
 export function loadTokenMint(): string | null {
-  return storage.getString(KEYS.TOKEN_MINT) ?? null;
+  return getStore().getString(KEYS.TOKEN_MINT) ?? null;
 }
 
 export function clearAll(): void {
-  storage.clearAll();
+  getStore().clearAll();
 }

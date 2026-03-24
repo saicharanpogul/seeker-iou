@@ -5,8 +5,6 @@ import {
   trackIssuedIOU,
   getLocalAvailableBalance,
   createSettleIOUInstruction,
-  chunkSettlementTransactions,
-  resolveRecipientDisplay,
   formatAmount,
   type LocalVaultState,
   type PendingIOU,
@@ -14,6 +12,7 @@ import {
 } from "seeker-iou";
 import { connection, signMessage, signAndSendTransaction, getPublicKey } from "./wallet";
 import { sendIOUViaNFC, receiveIOUViaNFC } from "./nfc";
+import { DEV_MODE, mockDelay } from "./devMode";
 import {
   saveVaultState,
   loadVaultState,
@@ -111,11 +110,16 @@ export async function receivePayment(): Promise<{
 
   // Resolve .skr domain for human-readable display
   let senderDisplay: string;
-  try {
-    const domain = await resolveRecipientDisplay(connection, result.iou.sender);
-    senderDisplay = domain || result.iou.sender.toBase58().slice(0, 8) + "...";
-  } catch {
-    senderDisplay = result.iou.sender.toBase58().slice(0, 8) + "...";
+  if (DEV_MODE) {
+    senderDisplay = "dev-sender.skr";
+  } else {
+    try {
+      const { resolveRecipientDisplay } = await import("seeker-iou");
+      const domain = await resolveRecipientDisplay(connection, result.iou.sender);
+      senderDisplay = domain || result.iou.sender.toBase58().slice(0, 8) + "...";
+    } catch {
+      senderDisplay = result.iou.sender.toBase58().slice(0, 8) + "...";
+    }
   }
 
   const received: ReceivedIOU = {
@@ -159,29 +163,39 @@ export async function settleAllIOUs(): Promise<{
 
   for (const iou of receivedIOUs) {
     try {
-      const parsed = parseIOUMessage(iou.message);
+      if (DEV_MODE) {
+        // Simulate settlement
+        await mockDelay(800);
+        const fakeSig = `dev_settle_${iou.nonce}_${Date.now()}`;
+        txSignatures.push(fakeSig);
+        markIOUSettled(iou.nonce, fakeSig);
+        settled++;
+        console.log(`[DEV] Settled IOU nonce=${iou.nonce}`);
+      } else {
+        const parsed = parseIOUMessage(iou.message);
 
-      const instructions = await createSettleIOUInstruction({
-        settler: wallet,
-        vault: parsed.vault,
-        recipient: parsed.recipient,
-        tokenMint: parsed.tokenMint,
-        iouMessage: iou.message,
-        signature: iou.signature,
-        nonce: parsed.nonce,
-        sgtMint: parsed.sgtMint,
-        senderPublicKey: parsed.sender,
-      });
+        const instructions = await createSettleIOUInstruction({
+          settler: wallet,
+          vault: parsed.vault,
+          recipient: parsed.recipient,
+          tokenMint: parsed.tokenMint,
+          iouMessage: iou.message,
+          signature: iou.signature,
+          nonce: parsed.nonce,
+          sgtMint: parsed.sgtMint,
+          senderPublicKey: parsed.sender,
+        });
 
-      const tx = new Transaction();
-      for (const ix of instructions) {
-        tx.add(ix);
+        const tx = new Transaction();
+        for (const ix of instructions) {
+          tx.add(ix);
+        }
+
+        const sig = await signAndSendTransaction(tx);
+        txSignatures.push(sig);
+        markIOUSettled(iou.nonce, sig);
+        settled++;
       }
-
-      const sig = await signAndSendTransaction(tx);
-      txSignatures.push(sig);
-      markIOUSettled(iou.nonce, sig);
-      settled++;
     } catch (err) {
       console.error(`Failed to settle IOU nonce=${iou.nonce}:`, err);
       failed++;
