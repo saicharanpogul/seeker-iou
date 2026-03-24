@@ -9,16 +9,34 @@
     "newArchEnabled": true,
     "android": {
       "package": "com.seekeriou.app",
+      "versionCode": 1,
       "adaptiveIcon": {
         "backgroundColor": "#0a0a0a"
       },
-      "permissions": ["android.permission.NFC"]
+      "permissions": [
+        "android.permission.NFC",
+        "android.permission.INTERNET"
+      ]
     },
     "plugins": [
       [
+        "expo-build-properties",
+        {
+          "android": {
+            "minSdkVersion": 26,
+            "targetSdkVersion": 34,
+            "compileSdkVersion": 34,
+            "newArchEnabled": true,
+            "kotlinVersion": "1.9.25"
+          }
+        }
+      ],
+      [
         "react-native-nfc-manager",
         {
-          "nfcPermission": "NFC is required for offline payments"
+          "nfcPermission": "NFC is required for offline payments",
+          "selectIdentifiers": [],
+          "systemCodes": []
         }
       ]
     ]
