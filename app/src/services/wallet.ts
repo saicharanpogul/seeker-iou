@@ -8,7 +8,7 @@ export const connection = new Connection(RPC_URL, "confirmed");
 
 let cachedPublicKey: PublicKey | null = null;
 
-// Dev mode: generate a deterministic keypair for testing
+// Dev mode keypair
 let devKeypair: Keypair | null = null;
 function getDevKeypair(): Keypair {
   if (!devKeypair) {
@@ -16,6 +16,22 @@ function getDevKeypair(): Keypair {
     console.log("[DEV] Mock wallet:", devKeypair.publicKey.toBase58());
   }
   return devKeypair;
+}
+
+// Lazy-loaded MWA transact function (only loaded on real device)
+let _transact: any = null;
+async function getTransact() {
+  if (_transact) return _transact;
+  try {
+    const mod = require("@solana-mobile/mobile-wallet-adapter-protocol-web3js");
+    _transact = mod.transact;
+    return _transact;
+  } catch (err) {
+    throw new Error(
+      "Solana Mobile Wallet Adapter not available. " +
+      "Run 'npx expo run:android' for a dev build, or enable Dev Mode."
+    );
+  }
 }
 
 export function getPublicKey(): PublicKey | null {
@@ -36,14 +52,15 @@ export async function connectWallet(): Promise<PublicKey> {
     return cachedPublicKey;
   }
 
-  // Production: Solana Mobile Wallet Adapter
-  const { transact } = await import(
-    "@solana-mobile/mobile-wallet-adapter-protocol-web3js"
-  );
-  const result = await transact(async (wallet) => {
+  const transact = await getTransact();
+  const result = await transact(async (wallet: any) => {
     return wallet.authorize({
       cluster: "devnet",
-      identity: { name: "seeker-iou", uri: "https://github.com/saicharanpogul/seeker-iou", icon: "favicon.ico" },
+      identity: {
+        name: "seeker-iou",
+        uri: "https://github.com/saicharanpogul/seeker-iou",
+        icon: "favicon.ico",
+      },
     });
   });
   cachedPublicKey = new PublicKey(result.accounts[0].address);
@@ -52,7 +69,7 @@ export async function connectWallet(): Promise<PublicKey> {
 
 /**
  * Sign a raw message (Ed25519).
- * DEV: signs with the generated keypair (mimics Seed Vault).
+ * DEV: signs with the generated keypair.
  * PROD: routes through Seed Vault hardware signing.
  */
 export async function signMessage(message: Uint8Array): Promise<Uint8Array> {
@@ -60,15 +77,12 @@ export async function signMessage(message: Uint8Array): Promise<Uint8Array> {
     await mockDelay(400);
     const kp = getDevKeypair();
     const signature = nacl.sign.detached(message, kp.secretKey);
-    console.log("[DEV] Message signed, sig:", Buffer.from(signature.slice(0, 8)).toString("hex") + "...");
     return signature;
   }
 
   if (!cachedPublicKey) throw new Error("Wallet not connected.");
-  const { transact } = await import(
-    "@solana-mobile/mobile-wallet-adapter-protocol-web3js"
-  );
-  const signatures = await transact(async (wallet) => {
+  const transact = await getTransact();
+  const signatures = await transact(async (wallet: any) => {
     return wallet.signMessages({
       addresses: [cachedPublicKey!.toBase58()],
       payloads: [message],
@@ -79,7 +93,7 @@ export async function signMessage(message: Uint8Array): Promise<Uint8Array> {
 
 /**
  * Sign and send a transaction.
- * DEV: signs locally and logs (doesn't actually submit).
+ * DEV: returns a fake signature.
  * PROD: Mobile Wallet Adapter → sign → submit → confirm.
  */
 export async function signAndSendTransaction(
@@ -87,7 +101,6 @@ export async function signAndSendTransaction(
 ): Promise<string> {
   if (isDevMode()) {
     await mockDelay(1200);
-    // Generate a fake signature
     const fakeSig = Buffer.from(nacl.randomBytes(64)).toString("base64").slice(0, 88);
     console.log("[DEV] Transaction 'sent':", fakeSig.slice(0, 16) + "...");
     return fakeSig;
@@ -98,10 +111,8 @@ export async function signAndSendTransaction(
   transaction.recentBlockhash = latestBlockhash.blockhash;
   transaction.feePayer = cachedPublicKey;
 
-  const { transact } = await import(
-    "@solana-mobile/mobile-wallet-adapter-protocol-web3js"
-  );
-  const signatures = await transact(async (wallet) => {
+  const transact = await getTransact();
+  const signatures = await transact(async (wallet: any) => {
     return wallet.signAndSendTransactions({ transactions: [transaction] });
   });
   const sig = signatures[0];
