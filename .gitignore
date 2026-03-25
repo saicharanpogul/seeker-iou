@@ -8,3 +8,5 @@ test-ledger/
 .env
 .env.local
 .DS_Store
+.lake/
+.expo/
