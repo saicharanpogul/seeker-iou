@@ -374,6 +374,29 @@ If you discover a vulnerability, report it privately via [GitHub Security Adviso
 5. Ensure `anchor test` and `bunx turbo test` pass
 6. Submit a PR
 
+### Open Contributions
+
+Looking for contributors on these items:
+
+| Area | Description | Difficulty |
+|---|---|---|
+| **Settlement Explorer UI** | Web frontend for browsing settlement history, vault states, and reputation scores from the indexer's SQLite data. React/Next.js preferred. | Medium |
+| **Multi-token support in app** | Vault switching between SKR, USDC, and SOL in the mobile app. UI for creating/managing multiple vaults per token mint. | Medium |
+| **NFC end-to-end testing** | Validate the full tap-to-pay flow between two Seeker devices. Document edge cases and failure modes. | Requires 2 Seekers |
+| **Push notifications** | Alert users when their issued IOUs get settled or fail. FCM integration in the mobile app. | Medium |
+
+### Quasar Zero-Copy Port
+
+A port of the entire program to the [Quasar](https://quasar-lang.com) zero-copy framework is in progress on the [`feat/quasar`](https://github.com/saicharanpogul/seeker-iou/tree/feat/quasar) branch.
+
+| Metric | Anchor | Quasar |
+|---|---|---|
+| Binary size | 397 KB | 43 KB (9.5x smaller) |
+| Heap allocations | Yes (Borsh deser) | Zero (pointer-cast) |
+| `no_std` | No | Yes |
+
+All 8 instructions compile and the IDL + Rust client are auto-generated. Quasar is currently in beta ([not yet audited](https://github.com/blueshift-gg/quasar)), so this branch is experimental. Contributions to complete the QuasarSVM integration tests are welcome — the `quasar-svm` dev dependency is temporarily disabled due to a transitive `toml_parser` edition2024 incompatibility with the Solana toolchain.
+
 ## License
 
 MIT

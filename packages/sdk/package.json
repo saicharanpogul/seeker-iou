@@ -1,6 +1,6 @@
 {
   "name": "seeker-iou",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "TypeScript SDK for seeker-iou on-chain vault and settlement protocol",
   "main": "./dist/index.js",
   "module": "./dist/index.mjs",
@@ -41,7 +41,7 @@
     "@solana/spl-token": "^0.4.0",
     "@solana/web3.js": "^1.95.0",
     "borsh": "^2.0.0",
-    "seeker-sdk": "^0.2.0",
+    "seeker-sdk": "^0.2.1",
     "tweetnacl": "^1.0.3"
   },
   "devDependencies": {
