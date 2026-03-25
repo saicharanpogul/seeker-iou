@@ -1,4 +1,5 @@
 import Proofs.State
+import Mathlib.Tactic
 
 open QEDGen.Solana
 
@@ -16,10 +17,9 @@ theorem withdraw_owner_only (s : VaultState) (signer : Pubkey) (clock_ts : Nat)
     (h : withdrawTransition s signer clock_ts ≠ none) :
     signer = s.owner := by
   unfold withdrawTransition at h
-  by_cases hc : signer = s.owner ∧ s.is_active = false ∧ clock_ts >= s.deactivated_at + s.cooldown_seconds ∧ s.remaining > 0
-  · exact hc.1
-  · simp only [if_neg hc] at h
-    exact absurd rfl h
+  split_ifs at h with h_cond
+  · exact h_cond.1
+  · contradiction
 
 -- P2: Only vault owner can deactivate
 def deactivateTransition (s : VaultState) (signer : Pubkey) (now : Nat) : Option VaultState :=
@@ -31,10 +31,9 @@ theorem deactivate_owner_only (s : VaultState) (signer : Pubkey) (now : Nat)
     (h : deactivateTransition s signer now ≠ none) :
     signer = s.owner := by
   unfold deactivateTransition at h
-  by_cases hc : signer = s.owner ∧ s.is_active = true
-  · exact hc.1
-  · simp only [if_neg hc] at h
-    exact absurd rfl h
+  split_ifs at h with h_cond
+  · exact h_cond.1
+  · contradiction
 
 -- P3: set_reserve_ratio requires active vault
 def setReserveRatioTransition (s : VaultState) (signer : Pubkey) (bps : Nat) : Option VaultState :=
@@ -46,10 +45,9 @@ theorem set_reserve_ratio_requires_active (s : VaultState) (signer : Pubkey) (bp
     (h : setReserveRatioTransition s signer bps ≠ none) :
     s.is_active = true := by
   unfold setReserveRatioTransition at h
-  by_cases hc : signer = s.owner ∧ s.is_active = true ∧ bps ≤ 10000
-  · exact hc.2.1
-  · simp only [if_neg hc] at h
-    exact absurd rfl h
+  split_ifs at h with h_cond
+  · exact h_cond.2.1
+  · contradiction
 
 -- P3b: set_cooldown requires active vault
 def setCooldownTransition (s : VaultState) (signer : Pubkey) (secs : Nat) : Option VaultState :=
@@ -61,7 +59,6 @@ theorem set_cooldown_requires_active (s : VaultState) (signer : Pubkey) (secs : 
     (h : setCooldownTransition s signer secs ≠ none) :
     s.is_active = true := by
   unfold setCooldownTransition at h
-  by_cases hc : signer = s.owner ∧ s.is_active = true ∧ secs ≥ 300
-  · exact hc.2.1
-  · simp only [if_neg hc] at h
-    exact absurd rfl h
+  split_ifs at h with h_cond
+  · exact h_cond.2.1
+  · contradiction
