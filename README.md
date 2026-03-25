@@ -5,6 +5,7 @@
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![Anchor](https://img.shields.io/badge/Anchor-0.31.1-blueviolet)](https://www.anchor-lang.com/)
 [![Solana](https://img.shields.io/badge/Solana-2.2.20-14F195?logo=solana)](https://solana.com)
+[![Formally Verified](https://img.shields.io/badge/Formally_Verified-Lean_4-orange)](formal_verification/SPEC.md)
 
 **Offline payment infrastructure for Solana Seeker. Vault-based IOUs exchanged over NFC. Settles on-chain when connectivity returns.**
 
@@ -15,6 +16,7 @@
 | **Framework** | Anchor 0.31.1 |
 | **Tests** | 62 passing (28 Anchor + 34 SDK) |
 | **Security** | [Self-audit report](docs/AUDIT_REPORT.md) (22 findings, 4 fixes applied) |
+| **Formal Verification** | [12/13 properties proven](formal_verification/SPEC.md) in Lean 4 (0 `sorry`) |
 | **How it works** | [Detailed walkthrough](docs/HOWITWORKS.md) |
 
 ---
@@ -292,6 +294,15 @@ seeker-iou/
 │       ├── services/              # wallet, nfc, payment, vault, storage
 │       └── hooks/                 # useVault, useReputation
 ├── tests/                         # Anchor integration tests + benchmarks
+├── formal_verification/           # Lean 4 mathematical proofs
+│   ├── SPEC.md                    # Formal specification (13 properties)
+│   ├── Proofs/                    # Machine-checked proofs
+│   │   ├── Authorization.lean     # Owner-only operations
+│   │   ├── Conservation.lean      # deposited >= spent invariant
+│   │   ├── ReplayPrevention.lean  # Nonce ordering + inactive vault
+│   │   ├── BondSlashing.lean      # Slash bounds + reputation
+│   │   └── Cooldown.lean          # Withdrawal timing enforcement
+│   └── QEDGen/                    # Solana axiom library
 ├── docs/
 │   ├── PRD.md                     # Product Requirements Document
 │   ├── HOWITWORKS.md              # Detailed flow walkthrough
@@ -302,6 +313,32 @@ seeker-iou/
 ├── turbo.json
 └── package.json
 ```
+
+## Formal Verification
+
+Core program properties are **mathematically proven correct** using [Lean 4](https://lean-lang.org/) + [Mathlib](https://leanprover-community.github.io/mathlib4_docs/) via [QEDGen](https://github.com/qedgen/solana-skills).
+
+| Category | Properties | Status |
+|---|---|---|
+| **Authorization** | Owner-only withdraw, deactivate; config requires active vault | Verified |
+| **Conservation** | `deposited >= spent` preserved across deposit, settle, withdraw | Verified |
+| **Replay Prevention** | Nonce strictly increases; inactive vault blocks settlement | Verified |
+| **Bond Slashing** | Slash bounded by `min(bond, amount)`; failure updates reputation | Verified |
+| **Cooldown** | Withdrawal enforces `timestamp >= deactivated_at + cooldown` | Verified |
+| **PDA Uniqueness** | One settlement record per nonce | Axiomatic (Solana runtime) |
+| **Arithmetic Safety** | No u64 overflow | Partial (Rust `checked_add`/`checked_sub`) |
+
+**12/13 properties formally verified. 0 `sorry` markers. 14 theorems across 5 proof files.**
+
+Verify yourself:
+
+```bash
+cd formal_verification && lake build
+# → Build completed successfully.
+```
+
+- [Formal specification](formal_verification/SPEC.md) — 13 properties with preconditions, effects, postconditions
+- [Proofs](formal_verification/Proofs/) — Machine-checked Lean 4 theorems
 
 ## Security
 
