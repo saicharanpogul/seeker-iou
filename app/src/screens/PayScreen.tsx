@@ -1,10 +1,13 @@
 import React, { useState, useEffect } from "react";
 import { View, Text, StyleSheet, TouchableOpacity, TextInput, Alert } from "react-native";
-import { PublicKey, Keypair } from "@solana/web3.js";
-import { parseAmount, isSkrDomain } from "seeker-iou";
+import { PublicKey, Keypair, Connection } from "@solana/web3.js";
+import { parseAmount, isSkrDomain, resolveSkrDomain } from "seeker-iou";
 import { sendPayment } from "../services/payment";
 import { useApp } from "../context/AppContext";
 import { isDevMode } from "../services/devMode";
+
+// Mainnet connection for .skr domain resolution
+const mainnetConnection = new Connection("https://api.mainnet-beta.solana.com", "confirmed");
 
 export function PayScreen({ navigation }: { navigation: any }) {
   const { refreshState } = useApp();
@@ -35,9 +38,7 @@ export function PayScreen({ navigation }: { navigation: any }) {
         setResolving(false);
       } else {
         try {
-          const { resolveSkrDomain } = await import("seeker-iou");
-          const { connection } = await import("../services/wallet");
-          const resolved = await resolveSkrDomain(connection, input);
+          const resolved = await resolveSkrDomain(mainnetConnection, input);
           setResolvedAddress(resolved);
         } catch {
           setResolvedAddress(null);
