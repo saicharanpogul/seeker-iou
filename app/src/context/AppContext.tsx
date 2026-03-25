@@ -23,7 +23,11 @@ import {
 import { initNFC } from "../services/nfc";
 import { getPendingIOUCount } from "../services/payment";
 import { isDevMode } from "../services/devMode";
-import { deriveVaultPda, reverseResolveSkr } from "seeker-iou";
+import { deriveVaultPda, reverseResolveSkr, getSkrDomains } from "seeker-iou";
+import { Connection as MainnetConnection } from "@solana/web3.js";
+
+// Mainnet connection for .skr domain resolution (domains live on mainnet)
+const mainnetConnection = new MainnetConnection("https://api.mainnet-beta.solana.com", "confirmed");
 import { Keypair } from "@solana/web3.js";
 
 interface AppState {
@@ -63,12 +67,11 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         const pk = new PublicKey(savedPubkey);
         setWallet(pk);
         const shortAddr = savedPubkey.slice(0, 4) + "..." + savedPubkey.slice(-4);
-        try {
-          const domain = await reverseResolveSkr(connection, pk);
-          setWalletDisplay(domain || shortAddr);
-        } catch {
-          setWalletDisplay(shortAddr);
-        }
+        setWalletDisplay(shortAddr);
+        // Resolve .skr domain in background (mainnet)
+        reverseResolveSkr(mainnetConnection, pk)
+          .then(d => { if (d) setWalletDisplay(d); })
+          .catch(() => {});
       }
 
       // Restore vault state
@@ -102,14 +105,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setWallet(pubkey);
       saveWalletPubkey(pubkey.toBase58());
 
-      // Resolve .skr domain for display
+      // Resolve .skr domain for display (mainnet — domains live there)
       const shortAddr = pubkey.toBase58().slice(0, 4) + "..." + pubkey.toBase58().slice(-4);
+      setWalletDisplay(shortAddr);
       try {
-        const domain = await reverseResolveSkr(connection, pubkey);
-        setWalletDisplay(domain || shortAddr);
-      } catch {
-        setWalletDisplay(shortAddr);
-      }
+        const domain = await reverseResolveSkr(mainnetConnection, pubkey);
+        if (domain) setWalletDisplay(domain);
+      } catch {}
 
       // In dev mode, seed a mock vault with 100 USDC if none exists
       if (isDevMode() && !loadVaultState()) {

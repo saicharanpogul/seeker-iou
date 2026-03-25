@@ -23,7 +23,7 @@
         "react-native-screens": "~4.24.0",
         "react-native-url-polyfill": "^2.0.0",
         "seeker-iou": "^0.1.0",
-        "seeker-sdk": "^0.2.0",
+        "seeker-sdk": "0.2.1",
         "stream-browserify": "^3.0.0",
         "text-encoding": "^0.7.0",
       },
@@ -1162,7 +1162,7 @@
 
     "seeker-iou": ["seeker-iou@0.1.0", "", { "dependencies": { "@coral-xyz/anchor": "^0.31.1", "@solana/spl-token": "^0.4.0", "@solana/web3.js": "^1.95.0", "borsh": "^2.0.0", "seeker-sdk": "^0.2.0", "tweetnacl": "^1.0.3" } }, "sha512-/axpx4885spNxbt5+pBP0vmTYVE0dmuBFxoCbYoNCNLKPLVbkULR95UDLwcHUNoX8ssVbwqumvcbQjSWUjkCCA=="],
 
-    "seeker-sdk": ["seeker-sdk@0.2.0", "", { "dependencies": { "@onsol/tldparser": "^0.6.0", "@solana/spl-token": "^0.4.0", "@solana/web3.js": "^1.95.0" }, "peerDependencies": { "react": ">=17.0.0" }, "optionalPeers": ["react"] }, "sha512-yCSYBxf6esenuP5gpCPz6i0RhAH0Fx1aaxA4BfanVUO7tkDrXQGi0X7bQC/R4tEsxjyLl6OZk6BhxTsFYMh5+w=="],
+    "seeker-sdk": ["seeker-sdk@0.2.1", "", { "dependencies": { "@onsol/tldparser": "^0.6.0", "@solana/spl-token": "^0.4.0", "@solana/web3.js": "^1.95.0" }, "peerDependencies": { "react": ">=17.0.0" }, "optionalPeers": ["react"] }, "sha512-pK8l2lzmC86yJYqR4RuTsbW9LB9jYjvr8jp0pknNJGqsjqSDWujojEj/uw5ViR/Odr3vESPZwAonzDJ0Yef5Nw=="],
 
     "semver": ["semver@7.7.4", "", { "bin": { "semver": "bin/semver.js" } }, "sha512-vFKC2IEtQnVhpT78h1Yp8wzwrf8CM+MzKMHGJZfBtzhZNycRFnXsHk6E5TxIkkMsgNS7mdX3AGB7x2QM2di4lA=="],
 
@@ -1583,6 +1583,8 @@
     "rpc-websockets/ws": ["ws@8.20.0", "", { "peerDependencies": { "bufferutil": "^4.0.1", "utf-8-validate": ">=5.0.2" }, "optionalPeers": ["bufferutil", "utf-8-validate"] }, "sha512-sAt8BhgNbzCtgGbt2OxmpuryO63ZoDk/sqaB/znQm94T4fCEsy/yV+7CdC1kJhOU9lboAEU7R3kquuycDoibVA=="],
 
     "seeker-iou/borsh": ["borsh@2.0.0", "", {}, "sha512-kc9+BgR3zz9+cjbwM8ODoUB4fs3X3I5A/HtX7LZKxCLaMrEeDFoBpnhZY//DTS1VZBSs6S5v46RZRbZjRFspEg=="],
+
+    "seeker-iou/seeker-sdk": ["seeker-sdk@0.2.0", "", { "dependencies": { "@onsol/tldparser": "^0.6.0", "@solana/spl-token": "^0.4.0", "@solana/web3.js": "^1.95.0" }, "peerDependencies": { "react": ">=17.0.0" }, "optionalPeers": ["react"] }, "sha512-yCSYBxf6esenuP5gpCPz6i0RhAH0Fx1aaxA4BfanVUO7tkDrXQGi0X7bQC/R4tEsxjyLl6OZk6BhxTsFYMh5+w=="],
 
     "send/debug": ["debug@2.6.9", "", { "dependencies": { "ms": "2.0.0" } }, "sha512-bC7ElrdJaJnPbAP+1EotYvqZsb3ecl5wi6Bfi6BJTUcNowp6cvspg0jXznRTKDjm/E7AdgFBVeAPVMNcKGsHMA=="],
 

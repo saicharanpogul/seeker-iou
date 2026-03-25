@@ -112,7 +112,7 @@ export function PayScreen({ navigation }: { navigation: any }) {
               style={styles.input}
               value={recipient}
               onChangeText={setRecipient}
-              placeholder="saicharan.skr or Solana address"
+              placeholder=".skr domain or Solana address"
               placeholderTextColor="#555"
               autoCapitalize="none"
               autoCorrect={false}

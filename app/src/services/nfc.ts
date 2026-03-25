@@ -4,7 +4,6 @@ import {
   validateNFCPayload,
   createIOUMessage,
   deriveVaultPda,
-  IOU_MESSAGE_SIZE,
 } from "seeker-iou";
 import { Keypair, PublicKey } from "@solana/web3.js";
 import nacl from "tweetnacl";
@@ -19,25 +18,41 @@ export interface NFCReceiveResult {
   error?: string;
 }
 
-// --- Dev mode: simulated NFC "inbox" ---
-// When sendIOUViaNFC is called in dev mode, it stores the payload here.
-// When receiveIOUViaNFC is called, it reads from here (simulating a tap).
+// Dev mode NFC buffer
 let devNFCBuffer: { message: Uint8Array; signature: Uint8Array } | null = null;
 
-/**
- * In dev mode, simulate receiving an IOU from a fake sender.
- * Call this to pre-load the NFC buffer for testing the receive flow.
- */
+// Lazy NFC manager reference
+let _nfcManager: any = null;
+let _nfcStarted = false;
+
+async function getNfcManager(): Promise<any> {
+  if (_nfcManager) return _nfcManager;
+  try {
+    const mod = require("react-native-nfc-manager");
+    _nfcManager = mod.default;
+    return _nfcManager;
+  } catch (err) {
+    throw new Error("NFC not available: " + (err instanceof Error ? err.message : String(err)));
+  }
+}
+
+function getNfcTech(): any {
+  return require("react-native-nfc-manager").NfcTech;
+}
+
+function getNdef(): any {
+  return require("react-native-nfc-manager").Ndef;
+}
+
 export function devSimulateIncomingIOU(params?: {
   senderKeypair?: Keypair;
   recipientPubkey?: PublicKey;
   amount?: bigint;
 }): void {
   if (!isDevMode()) return;
-
   const sender = params?.senderKeypair || Keypair.generate();
   const recipient = params?.recipientPubkey || Keypair.generate().publicKey;
-  const tokenMint = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v"); // USDC devnet
+  const tokenMint = new PublicKey("EPjFWdd5AufqSSqeM2qN1xzybapC8G4wEGGkZwyTDt1v");
   const sgtMint = Keypair.generate().publicKey;
   const [vault] = deriveVaultPda(sender.publicKey, tokenMint);
 
@@ -46,46 +61,38 @@ export function devSimulateIncomingIOU(params?: {
     sender: sender.publicKey,
     recipient,
     tokenMint,
-    amount: params?.amount || 5_000_000n, // 5 USDC
+    amount: params?.amount || 5_000_000n,
     nonce: Math.floor(Math.random() * 1000) + 1,
     sgtMint,
     memo: "dev test payment",
   });
 
   const signature = nacl.sign.detached(message, sender.secretKey);
-
   devNFCBuffer = { message, signature };
-  console.log("[DEV] Simulated incoming IOU loaded into NFC buffer");
-  console.log("[DEV]   From:", sender.publicKey.toBase58().slice(0, 8) + "...");
-  console.log("[DEV]   Amount:", (params?.amount || 5_000_000n).toString());
 }
 
 /**
- * Initialize NFC.
- * DEV: always returns true.
- * PROD: checks hardware NFC support.
+ * Initialize NFC. Must be called once on app startup.
  */
 export async function initNFC(): Promise<boolean> {
-  if (isDevMode()) {
-    console.log("[DEV] NFC initialized (mock)");
-    return true;
-  }
+  if (isDevMode()) return true;
 
   try {
-    const NfcManager = (await import("react-native-nfc-manager")).default;
-    const supported = await NfcManager.isSupported();
-    if (supported) await NfcManager.start();
+    const mgr = await getNfcManager();
+    const supported = await mgr.isSupported();
+    if (supported) {
+      await mgr.start();
+      _nfcStarted = true;
+    }
     return supported;
   } catch (err) {
-    console.warn("NFC not available:", err);
+    console.warn("NFC init failed:", err);
     return false;
   }
 }
 
 /**
  * Send a signed IOU via NFC.
- * DEV: stores in buffer (simulates NFC push).
- * PROD: writes NDEF record via NFC hardware.
  */
 export async function sendIOUViaNFC(
   message: Uint8Array,
@@ -94,76 +101,81 @@ export async function sendIOUViaNFC(
   if (isDevMode()) {
     await mockDelay(1000);
     devNFCBuffer = { message, signature };
-    console.log("[DEV] IOU sent via mock NFC");
     return { success: true };
   }
 
   try {
-    const NfcManager = (await import("react-native-nfc-manager")).default;
-    const { NfcTech, Ndef } = await import("react-native-nfc-manager");
+    const mgr = await getNfcManager();
+    if (!_nfcStarted) {
+      await mgr.start();
+      _nfcStarted = true;
+    }
+
+    const NfcTech = getNfcTech();
+    const Ndef = getNdef();
     const payload = encodeNFCPayload({ message, signature });
 
-    await NfcManager.requestTechnology(NfcTech.Ndef);
-    await NfcManager.ndefHandler.writeNdefMessage([
+    await mgr.requestTechnology(NfcTech.Ndef);
+    await mgr.ndefHandler.writeNdefMessage([
       Ndef.record(Ndef.TNF_EXTERNAL_TYPE, "seeker-iou:payment", "", Array.from(payload)),
     ]);
-    await NfcManager.cancelTechnologyRequest();
+    await mgr.cancelTechnologyRequest();
     return { success: true };
   } catch (err) {
+    try { (await getNfcManager()).cancelTechnologyRequest(); } catch {}
     return { success: false, error: err instanceof Error ? err.message : String(err) };
   }
 }
 
 /**
  * Receive an IOU via NFC.
- * DEV: reads from buffer (with simulated delay for "tap" feel).
- *      If buffer is empty, auto-generates a fake incoming IOU.
- * PROD: blocks until NFC tag detected, reads NDEF.
+ * Activates NFC reader mode and waits for a tap.
  */
 export async function receiveIOUViaNFC(): Promise<NFCReceiveResult> {
   if (isDevMode()) {
-    // Simulate waiting for a tap
     await mockDelay(2000);
-
-    // If nothing in buffer, generate a fake incoming IOU
-    if (!devNFCBuffer) {
-      devSimulateIncomingIOU();
-    }
-
+    if (!devNFCBuffer) devSimulateIncomingIOU();
     const buf = devNFCBuffer!;
     devNFCBuffer = null;
 
-    // Encode then decode to exercise the full pipeline
     const encoded = encodeNFCPayload(buf);
     const result = validateNFCPayload(encoded);
-
     if (!result.valid) {
       return { success: false, iou: null, signature: null, rawMessage: null, error: result.error || "Invalid" };
     }
-
     const decoded = decodeNFCPayload(encoded);
-    console.log("[DEV] IOU received via mock NFC");
-    return {
-      success: true,
-      iou: result.iou,
-      signature: result.signature,
-      rawMessage: decoded.message,
-    };
+    return { success: true, iou: result.iou, signature: result.signature, rawMessage: decoded.message };
   }
 
-  // Production NFC
+  // Production NFC — activate reader and wait for tag
   try {
-    const NfcManager = (await import("react-native-nfc-manager")).default;
-    const { NfcTech } = await import("react-native-nfc-manager");
-    await NfcManager.requestTechnology(NfcTech.Ndef);
-    const tag = await NfcManager.getTag();
-    await NfcManager.cancelTechnologyRequest();
-
-    if (!tag?.ndefMessage?.[0]?.payload) {
-      return { success: false, iou: null, signature: null, rawMessage: null, error: "No NDEF message" };
+    const mgr = await getNfcManager();
+    if (!_nfcStarted) {
+      await mgr.start();
+      _nfcStarted = true;
     }
 
-    const payload = new Uint8Array(tag.ndefMessage[0].payload);
+    const NfcTech = getNfcTech();
+    await mgr.requestTechnology(NfcTech.Ndef);
+    const tag = await mgr.getTag();
+    await mgr.cancelTechnologyRequest();
+
+    if (!tag?.ndefMessage || tag.ndefMessage.length === 0) {
+      return { success: false, iou: null, signature: null, rawMessage: null, error: "No NDEF message on tag" };
+    }
+
+    // Find seeker-iou payment record
+    const NDEF_TYPE = "seeker-iou:payment";
+    const record = tag.ndefMessage.find((r: any) => {
+      const type = r.type ? String.fromCharCode(...r.type) : "";
+      return type === NDEF_TYPE;
+    });
+
+    if (!record?.payload) {
+      return { success: false, iou: null, signature: null, rawMessage: null, error: "No seeker-iou record" };
+    }
+
+    const payload = new Uint8Array(record.payload);
     const result = validateNFCPayload(payload);
     if (!result.valid) {
       return { success: false, iou: null, signature: null, rawMessage: null, error: result.error || "Invalid" };
@@ -172,14 +184,12 @@ export async function receiveIOUViaNFC(): Promise<NFCReceiveResult> {
     const decoded = decodeNFCPayload(payload);
     return { success: true, iou: result.iou, signature: result.signature, rawMessage: decoded.message };
   } catch (err) {
+    try { (await getNfcManager()).cancelTechnologyRequest(); } catch {}
     return { success: false, iou: null, signature: null, rawMessage: null, error: err instanceof Error ? err.message : String(err) };
   }
 }
 
 export async function cancelNFC(): Promise<void> {
   if (isDevMode()) return;
-  try {
-    const NfcManager = (await import("react-native-nfc-manager")).default;
-    await NfcManager.cancelTechnologyRequest();
-  } catch {}
+  try { (await getNfcManager()).cancelTechnologyRequest(); } catch {}
 }
