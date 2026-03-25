@@ -100,7 +100,7 @@ export function ReceiveScreen({ navigation }: { navigation: any }) {
   const nfcStatusText =
     nfcStatus === "initializing" ? "Initializing NFC..."
     : nfcStatus === "ready" ? "NFC ready"
-    : nfcStatus === "scanning" ? "NFC scanning — hold phones together"
+    : nfcStatus === "scanning" ? "NFC active"
     : "NFC unavailable";
 
   return (
